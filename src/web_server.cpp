@@ -57,10 +57,10 @@ void DisplayWebServer::setupOTA() {
         Serial.println("\n========================================");
         if (success) {
             Serial.println("OTA Update Complete!");
-            Serial.println("Rebooting in 1 second...");
+            Serial.println("Device will reboot automatically...");
             Serial.println("========================================\n");
-            delay(1000);
-            ESP.restart();
+            // Don't call ESP.restart() here - let ElegantOTA send HTTP response first
+            // Auto-reboot is enabled via setAutoReboot(true)
         } else {
             Serial.println("OTA Update FAILED!");
             Serial.println("========================================\n");

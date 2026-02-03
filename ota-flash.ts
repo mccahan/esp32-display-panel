@@ -157,47 +157,18 @@ async function flashDevice(device: DiscoveredDevice, firmwarePath: string, md5Ha
     const formData = new FormData();
     formData.append('file', new Blob([firmwareBuffer]), 'firmware.bin');
 
-    // Use AbortController with timeout - device reboots after upload,
-    // so connection will be dropped before HTTP response is received
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+    const uploadResponse = await fetch(`${baseUrl}/ota/upload`, {
+      method: 'POST',
+      body: formData
+    });
 
-    try {
-      const uploadResponse = await fetch(`${baseUrl}/ota/upload`, {
-        method: 'POST',
-        body: formData,
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (!uploadResponse.ok) {
-        console.error(`   ❌ Failed to upload firmware: ${uploadResponse.status}`);
-        return false;
-      }
-
-      console.log(`   ✅ Flash successful! Device will reboot.`);
-      return true;
-
-    } catch (uploadError: any) {
-      clearTimeout(timeoutId);
-
-      // Connection reset/closed errors are expected - device reboots after receiving firmware
-      const isConnectionClosed =
-        uploadError.code === 'ECONNRESET' ||
-        uploadError.code === 'ECONNREFUSED' ||
-        uploadError.code === 'ConnectionClosed' ||
-        uploadError.message?.includes('connection') ||
-        uploadError.message?.includes('terminated') ||
-        uploadError.message?.includes('reset') ||
-        uploadError.name === 'AbortError';
-
-      if (isConnectionClosed) {
-        console.log(`   ✅ Flash successful! Device is rebooting.`);
-        return true;
-      }
-
-      throw uploadError;
+    if (!uploadResponse.ok) {
+      console.error(`   ❌ Failed to upload firmware: ${uploadResponse.status}`);
+      return false;
     }
+
+    console.log(`   ✅ Flash successful! Device will reboot.`);
+    return true;
 
   } catch (error: any) {
     console.error(`   ❌ Error: ${error.message}`);
