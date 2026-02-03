@@ -109,6 +109,11 @@ router.post('/:id/config', async (req: Request, res: Response) => {
     });
     await pushButtonStatesToDevice(device, buttonUpdates);
 
+    // Immediately poll plugins and push fresh states to ensure device has latest external state
+    syncDevice(device).catch(err => {
+      console.error(`[Devices] Post-push sync error for ${device.id}:`, err);
+    });
+
     res.json({ success: true, message: 'Config and states pushed to device' });
   } else {
     res.status(500).json({ success: false, error: 'Failed to push config to device' });
