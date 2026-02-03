@@ -3,6 +3,8 @@
 #include "device_controller.h"
 #include "ui_manager.h"
 #include "theme_engine.h"
+#include "brightness_scheduler.h"
+#include "time_manager.h"
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <ElegantOTA.h>
@@ -39,7 +41,7 @@ void DisplayWebServer::setupRoutes() {
 
     // API: Get device info
     server.on("/api/info", HTTP_GET, [](AsyncWebServerRequest *request) {
-        StaticJsonDocument<512> doc;
+        StaticJsonDocument<768> doc;
         doc["chip_model"] = ESP.getChipModel();
         doc["chip_revision"] = ESP.getChipRevision();
         doc["cpu_freq_mhz"] = ESP.getCpuFreqMHz();
@@ -51,6 +53,42 @@ void DisplayWebServer::setupRoutes() {
         doc["ip_address"] = WiFi.localIP().toString();
         doc["mac_address"] = WiFi.macAddress();
         doc["reporting_url"] = configManager.getConfig().server.reportingUrl;
+
+        // Time information
+        doc["time_synced"] = timeManager.isSynced();
+        if (timeManager.isSynced()) {
+            char timeStr[6];
+            snprintf(timeStr, sizeof(timeStr), "%02d:%02d",
+                timeManager.getCurrentHour(), timeManager.getCurrentMinute());
+            doc["current_time"] = timeStr;
+        }
+
+        // Schedule information
+        const BrightnessScheduleConfig& schedule = configManager.getConfig().display.schedule;
+        doc["schedule_enabled"] = schedule.enabled;
+        doc["current_brightness"] = uiManager.getBrightness();
+
+        if (schedule.enabled && timeManager.isSynced()) {
+            // Find active period
+            uint8_t hour = timeManager.getCurrentHour();
+            uint8_t minute = timeManager.getCurrentMinute();
+            uint16_t currentMinutes = hour * 60 + minute;
+
+            int8_t activePeriod = schedule.periodCount > 0 ? schedule.periodCount - 1 : -1;
+            for (uint8_t i = 0; i < schedule.periodCount; i++) {
+                uint16_t periodStart = schedule.periods[i].startHour * 60 + schedule.periods[i].startMinute;
+                if (periodStart <= currentMinutes) {
+                    activePeriod = i;
+                } else {
+                    break;
+                }
+            }
+
+            if (activePeriod >= 0 && activePeriod < schedule.periodCount) {
+                doc["current_period"] = schedule.periods[activePeriod].name;
+                doc["scheduled_brightness"] = schedule.periods[activePeriod].brightness;
+            }
+        }
 
         String response;
         serializeJson(doc, response);
@@ -257,6 +295,9 @@ void DisplayWebServer::setupRoutes() {
 
                     // Request UI rebuild (will be done in main loop for thread safety)
                     uiManager.requestRebuild();
+
+                    // Refresh brightness scheduler with new config
+                    brightnessScheduler.refresh();
 
                     request->send(200, "application/json", "{\"success\":true,\"message\":\"Config applied\"}");
                 } else {
@@ -607,6 +648,21 @@ String DisplayWebServer::getIndexPage() {
                 const data = await response.json();
 
                 const grid = document.getElementById('device-info');
+                let scheduleHtml = '';
+                if (data.schedule_enabled) {
+                    const periodInfo = data.current_period ?
+                        `<span style="color: #4a4;">● ${data.current_period}</span> (${data.scheduled_brightness}%)` :
+                        'No active period';
+                    scheduleHtml = `
+                    <div class="info-item">
+                        <div class="info-label">Device Time</div>
+                        <div class="info-value">${data.time_synced ? data.current_time : '<span style="color: #f0ad4e;">Syncing...</span>'}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Schedule Period</div>
+                        <div class="info-value">${periodInfo}</div>
+                    </div>`;
+                }
                 grid.innerHTML = `
                     <div class="info-item">
                         <div class="info-label">Chip</div>
@@ -631,6 +687,11 @@ String DisplayWebServer::getIndexPage() {
                     <div class="info-item">
                         <div class="info-label">IP Address</div>
                         <div class="info-value">${data.ip_address}</div>
+                    </div>
+                    ${scheduleHtml}
+                    <div class="info-item">
+                        <div class="info-label">Brightness</div>
+                        <div class="info-value">${data.current_brightness}%${data.schedule_enabled ? ' <span style="color: #888; font-size: 0.8em;">(scheduled)</span>' : ''}</div>
                     </div>
                     <div class="info-item" style="grid-column: span 2;">
                         <div class="info-label">Reporting URL</div>

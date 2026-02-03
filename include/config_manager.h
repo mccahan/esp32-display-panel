@@ -8,6 +8,7 @@
 // Maximum number of buttons and scenes
 #define MAX_BUTTONS 6
 #define MAX_SCENES 2
+#define MAX_SCHEDULE_PERIODS 6
 
 // Button types
 enum class ButtonType {
@@ -66,12 +67,31 @@ struct DayNightConfig {
     uint8_t nightStartHour;
 };
 
+// Brightness schedule period
+struct BrightnessSchedulePeriod {
+    String name;
+    uint8_t startHour;    // 0-23
+    uint8_t startMinute;  // 0-59
+    uint8_t brightness;   // 0-100
+};
+
+// Brightness schedule configuration
+struct BrightnessScheduleConfig {
+    bool enabled;
+    String timezone;              // POSIX timezone string
+    uint8_t periodCount;
+    BrightnessSchedulePeriod periods[MAX_SCHEDULE_PERIODS];
+    uint8_t touchBrightness;      // Wake brightness (default 30)
+    uint16_t displayTimeout;      // Seconds before returning to schedule (default 30)
+};
+
 // Display configuration
 struct DisplayConfig {
     uint8_t brightness;
     String theme;
     DayNightConfig dayNight;
-    LCARSConfig lcars;       // LCARS-specific configuration
+    LCARSConfig lcars;                     // LCARS-specific configuration
+    BrightnessScheduleConfig schedule;     // Brightness scheduling
 };
 
 // Server configuration

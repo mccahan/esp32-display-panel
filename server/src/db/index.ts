@@ -44,6 +44,22 @@ export interface DayNightConfig {
   nightStartHour: number;
 }
 
+// Brightness schedule period
+export interface BrightnessSchedulePeriod {
+  name: string;           // e.g., "day", "night", "late night"
+  startTime: string;      // HH:MM format (24-hour)
+  brightness: number;     // 0-100
+}
+
+// Brightness schedule configuration
+export interface BrightnessScheduleConfig {
+  enabled: boolean;
+  timezone: string;                    // IANA timezone (e.g., "America/Denver")
+  periods: BrightnessSchedulePeriod[]; // Sorted by startTime
+  touchBrightness: number;             // Wake brightness (default: 30)
+  displayTimeout: number;              // Seconds before returning to schedule (default: 30)
+}
+
 // Button configuration
 export interface ButtonConfig {
   id: number;
@@ -98,6 +114,7 @@ export interface DisplayConfig {
   theme: 'light_mode' | 'neon_cyberpunk' | 'dark_clean' | 'lcars';
   dayNightMode: DayNightConfig;
   lcars: LCARSConfig;
+  brightnessSchedule?: BrightnessScheduleConfig;
 }
 
 // Server configuration
@@ -270,6 +287,17 @@ export function createDefaultConfig(deviceId: string, name: string, ip: string):
         sidebarTop: '',
         sidebarBottom: '',
         customFields: []
+      },
+      brightnessSchedule: {
+        enabled: false,
+        timezone: 'America/Denver',
+        periods: [
+          { name: 'Day', startTime: '07:00', brightness: 80 },
+          { name: 'Night', startTime: '20:00', brightness: 40 },
+          { name: 'Late Night', startTime: '23:00', brightness: 0 }
+        ],
+        touchBrightness: 30,
+        displayTimeout: 30
       }
     },
     buttons: [

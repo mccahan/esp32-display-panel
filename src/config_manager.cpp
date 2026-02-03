@@ -73,7 +73,7 @@ bool ConfigManager::saveConfig() {
 }
 
 bool ConfigManager::parseConfigJson(const String& json) {
-    DynamicJsonDocument doc(4096);
+    DynamicJsonDocument doc(6144);
     DeserializationError error = deserializeJson(doc, json);
 
     if (error) {
@@ -123,6 +123,27 @@ bool ConfigManager::parseConfigJson(const String& json) {
         textField.value = field["value"] | "";
         textField.style = field["style"] | "label";
         config.display.lcars.customFields.push_back(textField);
+    }
+
+    // Parse brightness schedule
+    JsonObject schedule = display["brightnessSchedule"];
+    config.display.schedule.enabled = schedule["enabled"] | false;
+    config.display.schedule.timezone = schedule["timezone"] | "MST7MDT,M3.2.0,M11.1.0";
+    config.display.schedule.touchBrightness = schedule["touchBrightness"] | 30;
+    config.display.schedule.displayTimeout = schedule["displayTimeout"] | 30;
+
+    // Parse schedule periods
+    config.display.schedule.periodCount = 0;
+    JsonArray periods = schedule["periods"];
+    for (JsonObject period : periods) {
+        if (config.display.schedule.periodCount >= MAX_SCHEDULE_PERIODS) break;
+
+        uint8_t idx = config.display.schedule.periodCount;
+        config.display.schedule.periods[idx].name = period["name"] | "Period";
+        config.display.schedule.periods[idx].startHour = period["startHour"] | 0;
+        config.display.schedule.periods[idx].startMinute = period["startMinute"] | 0;
+        config.display.schedule.periods[idx].brightness = period["brightness"] | 80;
+        config.display.schedule.periodCount++;
     }
 
     // Parse buttons
@@ -176,7 +197,7 @@ bool ConfigManager::parseConfigJson(const String& json) {
 }
 
 String ConfigManager::toJson() {
-    DynamicJsonDocument doc(4096);
+    DynamicJsonDocument doc(6144);
 
     doc["version"] = config.version;
 
@@ -215,6 +236,22 @@ String ConfigManager::toJson() {
         f["id"] = field.id;
         f["value"] = field.value;
         f["style"] = field.style;
+    }
+
+    // Brightness schedule
+    JsonObject schedule = display.createNestedObject("brightnessSchedule");
+    schedule["enabled"] = config.display.schedule.enabled;
+    schedule["timezone"] = config.display.schedule.timezone;
+    schedule["touchBrightness"] = config.display.schedule.touchBrightness;
+    schedule["displayTimeout"] = config.display.schedule.displayTimeout;
+
+    JsonArray periods = schedule.createNestedArray("periods");
+    for (uint8_t i = 0; i < config.display.schedule.periodCount; i++) {
+        JsonObject period = periods.createNestedObject();
+        period["name"] = config.display.schedule.periods[i].name;
+        period["startHour"] = config.display.schedule.periods[i].startHour;
+        period["startMinute"] = config.display.schedule.periods[i].startMinute;
+        period["brightness"] = config.display.schedule.periods[i].brightness;
     }
 
     // Buttons
@@ -386,6 +423,28 @@ void ConfigManager::createDefaultConfig() {
     config.display.lcars.sidebarTop = "";
     config.display.lcars.sidebarBottom = "";
     config.display.lcars.customFields.clear();
+
+    // Brightness schedule defaults (disabled by default)
+    config.display.schedule.enabled = false;
+    config.display.schedule.timezone = "MST7MDT,M3.2.0,M11.1.0";
+    config.display.schedule.touchBrightness = 30;
+    config.display.schedule.displayTimeout = 30;
+    config.display.schedule.periodCount = 3;
+    // Day period
+    config.display.schedule.periods[0].name = "Day";
+    config.display.schedule.periods[0].startHour = 7;
+    config.display.schedule.periods[0].startMinute = 0;
+    config.display.schedule.periods[0].brightness = 80;
+    // Night period
+    config.display.schedule.periods[1].name = "Night";
+    config.display.schedule.periods[1].startHour = 20;
+    config.display.schedule.periods[1].startMinute = 0;
+    config.display.schedule.periods[1].brightness = 40;
+    // Late night period
+    config.display.schedule.periods[2].name = "Late Night";
+    config.display.schedule.periods[2].startHour = 23;
+    config.display.schedule.periods[2].startMinute = 0;
+    config.display.schedule.periods[2].brightness = 0;
 
     // Default buttons (4 lights)
     config.buttons.clear();

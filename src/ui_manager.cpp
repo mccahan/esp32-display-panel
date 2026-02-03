@@ -268,7 +268,7 @@ void UIManager::createHeader() {
         lv_obj_t* statusDot = lv_obj_create(header);
         lv_obj_clear_flag(statusDot, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_size(statusDot, 8, 8);
-        lv_obj_align(statusDot, LV_ALIGN_RIGHT_MID, -60, -10);
+        lv_obj_align(statusDot, LV_ALIGN_RIGHT_MID, -80, -10);
         lv_obj_set_style_bg_color(statusDot, lv_color_hex(0x00ff88), 0);
         lv_obj_set_style_bg_opa(statusDot, LV_OPA_COVER, 0);
         lv_obj_set_style_border_width(statusDot, 0, 0);

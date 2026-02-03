@@ -2,6 +2,7 @@
 import {
   Device,
   DeviceConfig,
+  BrightnessScheduleConfig,
   getDevice,
   upsertDevice,
   deleteDevice,
@@ -10,6 +11,30 @@ import {
   getDiscoveredDevices,
   DiscoveredDevice
 } from '../db';
+import { ianaToPosix, parseTimeString } from '../utils/timezone';
+
+// Convert brightness schedule for ESP32 format
+// - Convert IANA timezone to POSIX
+// - Convert "HH:MM" startTime strings to startHour/startMinute
+function convertScheduleForDevice(schedule: BrightnessScheduleConfig | undefined): any {
+  if (!schedule) return undefined;
+
+  return {
+    enabled: schedule.enabled,
+    timezone: ianaToPosix(schedule.timezone),
+    periods: schedule.periods.map(period => {
+      const { hour, minute } = parseTimeString(period.startTime);
+      return {
+        name: period.name,
+        startHour: hour,
+        startMinute: minute,
+        brightness: period.brightness
+      };
+    }),
+    touchBrightness: schedule.touchBrightness,
+    displayTimeout: schedule.displayTimeout
+  };
+}
 
 // Push configuration to a device
 export async function pushConfigToDevice(device: Device): Promise<boolean> {
@@ -17,10 +42,19 @@ export async function pushConfigToDevice(device: Device): Promise<boolean> {
     const url = `http://${device.ip}/api/config`;
     console.log(`Pushing config to ${device.name} at ${url}`);
 
+    // Prepare config for device, converting brightness schedule format
+    const configForDevice = {
+      ...device.config,
+      display: {
+        ...device.config.display,
+        brightnessSchedule: convertScheduleForDevice(device.config.display.brightnessSchedule)
+      }
+    };
+
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(device.config)
+      body: JSON.stringify(configForDevice)
     });
 
     if (response.ok) {
@@ -218,6 +252,21 @@ export async function pushReportingUrlToDevice(
   }
 }
 
+// Fetch device's actual reporting URL from the device itself
+async function fetchDeviceReportingUrl(device: Device): Promise<string | null> {
+  try {
+    const url = `http://${device.ip}/api/device/info`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (response.ok) {
+      const info = await response.json() as { reportingUrl?: string };
+      return info.reportingUrl || null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // Sync reporting URL to all online devices if REPORTING_URL env var is set
 export async function syncReportingUrls(): Promise<void> {
   const reportingUrl = process.env.REPORTING_URL;
@@ -230,18 +279,24 @@ export async function syncReportingUrls(): Promise<void> {
   const devices = getAllDevices();
 
   for (const device of devices) {
-    // Check if device's current reporting URL differs from the configured one
-    const currentUrl = device.config?.server?.reportingUrl;
-    if (currentUrl !== reportingUrl) {
-      console.log(`[DeviceService] Device ${device.name} has different URL (${currentUrl || 'none'}), pushing update`);
+    // Fetch the device's actual reporting URL (not the server's cached version)
+    const deviceUrl = await fetchDeviceReportingUrl(device);
 
-      // First check if device is online
-      const online = await pingDevice(device);
-      if (online) {
-        await pushReportingUrlToDevice(device, reportingUrl);
-      } else {
-        console.log(`[DeviceService] Device ${device.name} is offline, skipping URL sync`);
-      }
+    if (deviceUrl === null) {
+      console.log(`[DeviceService] Device ${device.name} is offline or unreachable, skipping URL sync`);
+      device.online = false;
+      upsertDevice(device);
+      continue;
+    }
+
+    // Device is online
+    device.online = true;
+    device.lastSeen = Date.now();
+    upsertDevice(device);
+
+    if (deviceUrl !== reportingUrl) {
+      console.log(`[DeviceService] Device ${device.name} has different URL (${deviceUrl}), pushing update`);
+      await pushReportingUrlToDevice(device, reportingUrl);
     } else {
       console.log(`[DeviceService] Device ${device.name} already has correct reporting URL`);
     }

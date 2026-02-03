@@ -14,6 +14,8 @@
 #include "mdns_service.h"
 #include "web_server.h"
 #include "screenshot.h"
+#include "time_manager.h"
+#include "brightness_scheduler.h"
 
 // Optional: include secrets.h for default WiFi credentials
 #if __has_include("secrets.h")
@@ -109,6 +111,14 @@ void my_touchpad_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
     touchController.read();
 
     if (touchController.isTouched) {
+        // Notify brightness scheduler of touch event
+        // If it returns true, the touch should be consumed (display was at 0%)
+        if (brightnessScheduler.onTouchDetected()) {
+            // Block button events - just wake the display
+            data->state = LV_INDEV_STATE_RELEASED;
+            return;
+        }
+
         data->state = LV_INDEV_STATE_PRESSED;
 
         // Raw touch coordinates from GT911
@@ -316,6 +326,12 @@ void setup() {
         }
     }
 
+    // Initialize time manager for NTP sync
+    timeManager.begin();
+
+    // Initialize brightness scheduler
+    brightnessScheduler.begin();
+
     // Start web server
     webServer.begin();
 
@@ -347,6 +363,12 @@ void loop() {
 
     // Device controller periodic tasks (server connectivity check)
     deviceController.update();
+
+    // Update time manager (NTP sync)
+    timeManager.update();
+
+    // Update brightness scheduler
+    brightnessScheduler.update();
 
     // Small delay to prevent watchdog issues
     delay(5);
