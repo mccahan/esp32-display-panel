@@ -646,7 +646,7 @@
 
   <div class="container">
     <div class="tabs">
-      <div class="tab active" data-tab="devices">Devices</div>
+      <div class="tab active" data-tab="devices">Displays</div>
       <div class="tab" data-tab="scenes">Scenes</div>
       <div class="tab" data-tab="discover">Discover</div>
       <div class="tab" data-tab="plugins">Plugins</div>
@@ -658,9 +658,9 @@
         <!-- Device List Sidebar -->
         <div class="device-sidebar">
           <div class="card">
-            <h2>My Devices</h2>
+            <h2>My Displays</h2>
             <div class="device-list" id="device-list">
-              <div class="empty-state">Loading devices...</div>
+              <div class="empty-state">Loading displays...</div>
             </div>
           </div>
         </div>
@@ -669,9 +669,9 @@
         <div id="device-detail" class="hidden">
           <div class="card">
             <div class="section">
-              <div class="section-title">Device Settings</div>
+              <div class="section-title">Display Settings</div>
               <div class="form-group">
-                <label>Device Name</label>
+                <label>Display Name</label>
                 <input type="text" id="device-name" placeholder="Enter device name">
               </div>
               <div class="form-row">
@@ -727,9 +727,9 @@
             </div>
 
             <div class="actions">
-              <button class="btn btn-success" onclick="saveDeviceConfig()">Save & Push to Device</button>
+              <button class="btn btn-success" onclick="saveDeviceConfig()">Save & Push to Display</button>
               <div class="actions-right">
-                <button class="btn btn-danger" onclick="deleteDevice()">Remove Device</button>
+                <button class="btn btn-danger" onclick="deleteDevice()">Remove Display</button>
               </div>
             </div>
           </div>
@@ -749,8 +749,8 @@
                 <button class="btn btn-sm btn-secondary" onclick="refreshScreenshot()">Refresh</button>
               </div>
               <div class="screenshot-container">
-                <img id="device-screenshot" src="" alt="Device screenshot" style="display: none;">
-                <div id="no-screenshot">Select a device to view screenshot</div>
+                <img id="device-screenshot" src="" alt="Display screenshot" style="display: none;">
+                <div id="no-screenshot">Select a display to view screenshot</div>
               </div>
             </div>
           </div>
@@ -758,8 +758,8 @@
 
         <div id="no-device-selected" class="card">
           <div class="empty-state">
-            <p style="font-size: 1.2em; margin-bottom: 10px;">Select a device</p>
-            <p>Choose a device from the list to configure it, or go to the Discover tab to add new devices.</p>
+            <p style="font-size: 1.2em; margin-bottom: 10px;">Select a display</p>
+            <p>Choose a display from the list to configure it, or go to the Discover tab to add new displays.</p>
           </div>
         </div>
       </div>
@@ -834,13 +834,13 @@
     <!-- Discover Tab -->
     <div id="tab-discover" class="hidden">
       <div class="card">
-        <h2>Discover New Devices</h2>
+        <h2>Discover New Displays</h2>
         <p style="color: #888; margin-bottom: 15px;">
-          ESP32 display devices advertising via mDNS will appear here. Click "Adopt" to add them to your system.
+          ESP32 displays advertising via mDNS will appear here. Click "Adopt" to add them to your system.
         </p>
         <button class="btn btn-primary" onclick="scanDevices()">Scan Network</button>
         <div id="discovered-list" style="margin-top: 20px;">
-          <div class="empty-state">Click "Scan Network" to search for devices</div>
+          <div class="empty-state">Click "Scan Network" to search for displays</div>
         </div>
       </div>
     </div>
@@ -891,9 +891,9 @@
   <!-- Adopt Modal -->
   <div id="adopt-modal" class="modal hidden">
     <div class="modal-content">
-      <h2>Adopt Device</h2>
+      <h2>Adopt Display</h2>
       <div class="form-group">
-        <label>Device Name</label>
+        <label>Display Name</label>
         <input type="text" id="adopt-name" placeholder="e.g., Living Room Panel">
       </div>
       <div class="form-group">
@@ -902,7 +902,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeAdoptModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="confirmAdopt()">Adopt Device</button>
+        <button class="btn btn-primary" onclick="confirmAdopt()">Adopt Display</button>
       </div>
     </div>
   </div>
@@ -1036,12 +1036,17 @@
       const route = parts[0];
 
       switch (route) {
-        case 'device':
+        case 'display':
+        case 'device':  // Backward compatibility
           switchTab('devices');
           if (parts[1]) {
-            // Wait for devices to load, then select the device
+            // Wait for displays to load, then select the display
             const deviceId = decodeURIComponent(parts[1]);
             waitForDevicesAndSelect(deviceId);
+            // Redirect old URLs to new format
+            if (route === 'device') {
+              navigateTo(`/display/${encodeURIComponent(deviceId)}`, true);
+            }
           }
           break;
 
@@ -1139,7 +1144,7 @@
         // Update URL based on tab
         if (tabName === 'devices') {
           if (selectedDevice) {
-            navigateTo(`/device/${encodeURIComponent(selectedDevice.id)}`);
+            navigateTo(`/display/${encodeURIComponent(selectedDevice.id)}`);
           } else {
             navigateTo('/');
           }
@@ -1176,7 +1181,7 @@
       const list = document.getElementById('device-list');
 
       if (devices.length === 0) {
-        list.innerHTML = '<div class="empty-state">No devices yet.<br>Go to Discover tab to add devices.</div>';
+        list.innerHTML = '<div class="empty-state">No displays yet.<br>Go to Discover tab to add displays.</div>';
         return;
       }
 
@@ -1201,7 +1206,7 @@
 
         // Update URL to reflect selected device
         if (updateUrl) {
-          navigateTo(`/device/${encodeURIComponent(id)}`, true);
+          navigateTo(`/display/${encodeURIComponent(id)}`, true);
         }
 
         document.getElementById('device-detail').classList.remove('hidden');
@@ -1227,7 +1232,7 @@
         refreshScreenshot();
       } catch (error) {
         console.error('Failed to load device:', error);
-        showToast('Failed to load device', 'error');
+        showToast('Failed to load display', 'error');
       }
     }
 
@@ -1464,8 +1469,8 @@
           <select onchange="updateDeviceSceneGlobal(${i}, this.value)">
             <option value="">-- Custom --</option>
             <optgroup label="Built-in">
-              <option value="__builtin_all_off__" ${scene.globalSceneId === '__builtin_all_off__' ? 'selected' : ''}>All Off (this device)</option>
-              <option value="__builtin_all_on__" ${scene.globalSceneId === '__builtin_all_on__' ? 'selected' : ''}>All On (this device)</option>
+              <option value="__builtin_all_off__" ${scene.globalSceneId === '__builtin_all_off__' ? 'selected' : ''}>All Off (this display)</option>
+              <option value="__builtin_all_on__" ${scene.globalSceneId === '__builtin_all_on__' ? 'selected' : ''}>All On (this display)</option>
             </optgroup>
             <optgroup label="Global Scenes">
               ${globalScenes.map(gs => `<option value="${gs.id}" ${scene.globalSceneId === gs.id ? 'selected' : ''}>${gs.name}</option>`).join('')}
@@ -1595,7 +1600,7 @@
 
     async function deleteDevice() {
       if (!selectedDevice) return;
-      if (!confirm(`Remove "${selectedDevice.name}" from the system?`)) return;
+      if (!confirm(`Remove display "${selectedDevice.name}" from the system?`)) return;
 
       try {
         await fetch(`/api/devices/${selectedDevice.id}`, { method: 'DELETE' });
@@ -1604,10 +1609,10 @@
         document.getElementById('no-device-selected').classList.remove('hidden');
         navigateTo('/', true);  // Clear device from URL
         loadDevices();
-        showToast('Device removed', 'success');
+        showToast('Display removed', 'success');
       } catch (error) {
         console.error('Failed to delete device:', error);
-        showToast('Failed to remove device', 'error');
+        showToast('Failed to remove display', 'error');
       }
     }
 
@@ -1621,7 +1626,7 @@
         const discovered = await response.json();
 
         if (discovered.length === 0) {
-          list.innerHTML = '<div class="empty-state">No new devices found.<br>Make sure your ESP32 devices are powered on and connected to WiFi.</div>';
+          list.innerHTML = '<div class="empty-state">No new displays found.<br>Make sure your ESP32 displays are powered on and connected to WiFi.</div>';
           return;
         }
 
@@ -1636,11 +1641,11 @@
         `).join('');
 
         if (list.innerHTML === '') {
-          list.innerHTML = '<div class="empty-state">All discovered devices have been adopted.</div>';
+          list.innerHTML = '<div class="empty-state">All discovered displays have been adopted.</div>';
         }
       } catch (error) {
         console.error('Failed to load discovered devices:', error);
-        list.innerHTML = '<div class="empty-state">Failed to scan for devices</div>';
+        list.innerHTML = '<div class="empty-state">Failed to scan for displays</div>';
       }
     }
 
@@ -1681,12 +1686,12 @@
         });
 
         closeAdoptModal();
-        showToast('Device adopted successfully!', 'success');
+        showToast('Display adopted successfully!', 'success');
         loadDiscoveredDevices();
         loadDevices();
         document.querySelector('.tab[data-tab="devices"]').click();
       } catch (error) {
-        showToast('Failed to adopt device', 'error');
+        showToast('Failed to adopt display', 'error');
         console.error(error);
       }
     }
