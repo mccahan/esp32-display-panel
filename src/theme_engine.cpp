@@ -7,7 +7,7 @@ ThemeEngine themeEngine;
 // Theme Definitions
 // ============================================================================
 
-// Light Mode Theme
+// Light Theme
 // Clean, minimal iOS-inspired light theme
 ThemeDefinition ThemeEngine::lightModeTheme = {
     .id = ThemeId::LIGHT_MODE,
@@ -84,7 +84,7 @@ ThemeDefinition ThemeEngine::neonCyberpunkTheme = {
     }
 };
 
-// Dark Clean Theme (current default)
+// Dark Theme (current default)
 // Modern dark theme with warm orange accents
 ThemeDefinition ThemeEngine::darkCleanTheme = {
     .id = ThemeId::DARK_CLEAN,

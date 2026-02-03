@@ -4,7 +4,7 @@ A smart home control panel built on the Guition ESP32-S3-4848S040 with a Node.js
 
 ## Features
 
-- **Multi-theme UI** - Dark Clean, Neon Cyberpunk, Light Mode, LCARS (Star Trek)
+- **Multi-theme UI** - Dark, Light, Neon Cyberpunk, LCARS (Star Trek)
 - **Plugin System** - Extensible architecture for smart home integrations
 - **Homebridge Integration** - Control HomeKit devices via Homebridge API
 - **Bi-directional Sync** - State changes from external apps reflected on display
