@@ -70,6 +70,9 @@
       margin-bottom: 12px;
       padding-bottom: 8px;
       border-bottom: 1px solid #2a2a4a;
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
     .device-list { display: flex; flex-direction: column; gap: 10px; }
@@ -643,6 +646,136 @@
       transform: scale(1.05);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
+
+    /* Settings Tab Styles */
+    .settings-layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .settings-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    .schedule-period {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .schedule-period.active-period {
+      background: rgba(76, 175, 80, 0.1);
+      border: 1px solid rgba(76, 175, 80, 0.3);
+    }
+    .schedule-period input[type="text"] {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      padding: 4px 8px;
+      color: #fff;
+    }
+    .schedule-period input[type="time"] {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      padding: 4px 8px;
+      color: #fff;
+    }
+    .schedule-period input[type="range"] {
+      flex: 1;
+      min-width: 80px;
+    }
+    .schedule-period .period-brightness-value {
+      min-width: 40px;
+      text-align: right;
+      color: #888;
+    }
+    .device-schedule-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 15px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .device-schedule-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .device-schedule-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .device-schedule-type {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .schedule-status {
+      font-size: 0.85em;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .schedule-status.enabled {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4CAF50;
+    }
+    .schedule-status.disabled {
+      background: rgba(255, 255, 255, 0.1);
+      color: #888;
+    }
+    .badge-global {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.8em;
+      font-weight: 500;
+    }
+    .badge-custom {
+      background: rgba(255, 159, 10, 0.2);
+      color: #ff9f0a;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.8em;
+      font-weight: 500;
+    }
+    .use-global-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(102, 126, 234, 0.1);
+      border: 1px solid rgba(102, 126, 234, 0.3);
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    .use-global-toggle > label:first-child {
+      margin: 0;
+      flex: 1;
+    }
+    .use-global-toggle small {
+      color: #888;
+      display: block;
+      margin-top: 4px;
+    }
+    .use-global-toggle .toggle-switch {
+      flex-shrink: 0;
+      width: 50px;
+      min-width: 50px;
+    }
+    #global-schedule-content {
+      max-height: none;
+    }
+    #global-schedule-content.collapsed {
+      max-height: 0;
+    }
   </style>
 </head>
 <body>
@@ -659,6 +792,7 @@
       <div class="tab" data-tab="scenes">Scenes</div>
       <div class="tab" data-tab="discover">Discover</div>
       <div class="tab" data-tab="plugins">Plugins</div>
+      <div class="tab" data-tab="settings">Settings</div>
     </div>
 
     <!-- Devices Tab -->
@@ -704,61 +838,6 @@
             </div>
 
             <div class="section">
-              <div class="collapsible-header collapsed" onclick="toggleCollapsible(this)">
-                <div class="section-title">
-                  <span class="collapse-icon">▼</span>
-                  Brightness Schedule
-                  <label class="toggle-switch" onclick="event.stopPropagation();">
-                    <input type="checkbox" id="schedule-enabled" onchange="toggleScheduleEnabled(this.checked)">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-              <div class="collapsible-content collapsed" id="schedule-content">
-                <div class="form-group">
-                  <label>Timezone</label>
-                  <select id="schedule-timezone">
-                    <option value="America/New_York">America/New_York (EST/EDT)</option>
-                    <option value="America/Chicago">America/Chicago (CST/CDT)</option>
-                    <option value="America/Denver">America/Denver (MST/MDT)</option>
-                    <option value="America/Phoenix">America/Phoenix (MST - no DST)</option>
-                    <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
-                    <option value="America/Anchorage">America/Anchorage (AKST/AKDT)</option>
-                    <option value="Pacific/Honolulu">Pacific/Honolulu (HST)</option>
-                    <option value="America/Toronto">America/Toronto (EST/EDT)</option>
-                    <option value="America/Vancouver">America/Vancouver (PST/PDT)</option>
-                    <option value="Europe/London">Europe/London (GMT/BST)</option>
-                    <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
-                    <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
-                    <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
-                    <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
-                    <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
-                    <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
-                    <option value="UTC">UTC</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>Touch Wake Brightness</label>
-                  <div class="slider-container">
-                    <input type="range" id="schedule-touch-brightness" min="10" max="100" value="30">
-                    <span class="slider-value" id="schedule-touch-brightness-value">30%</span>
-                  </div>
-                  <small style="color: #888;">Brightness when tapping screen at 0%</small>
-                </div>
-                <div class="form-group">
-                  <label>Display Timeout (seconds)</label>
-                  <input type="number" id="schedule-display-timeout" min="5" max="300" value="30" style="width: 100px;">
-                  <small style="color: #888;">How long to stay awake after touch</small>
-                </div>
-                <div class="form-group">
-                  <label>Schedule Periods</label>
-                  <div id="schedule-periods-list"></div>
-                  <button class="btn btn-sm btn-secondary" onclick="addSchedulePeriod()" style="margin-top: 8px;">+ Add Period</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="section">
               <div class="section-title">
                 Buttons
                 <button class="btn btn-sm btn-secondary" onclick="addButton()">+ Add Button</button>
@@ -788,6 +867,73 @@
                 </label>
               </div>
               <div class="button-list" id="device-scene-list"></div>
+            </div>
+
+            <div class="section">
+              <div class="collapsible-header collapsed" onclick="toggleCollapsible(this)">
+                <div class="section-title">
+                  <span class="collapse-icon">▼</span>
+                  Brightness Schedule
+                  <label class="toggle-switch" onclick="event.stopPropagation();">
+                    <input type="checkbox" id="schedule-enabled" onchange="toggleScheduleEnabled(this.checked)">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+              <div class="collapsible-content collapsed" id="schedule-content">
+                <div class="use-global-toggle">
+                  <label>
+                    Use Global Schedule
+                    <small>Use the default brightness schedule from Settings instead of a custom schedule for this display</small>
+                  </label>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="use-global-schedule" onchange="toggleUseGlobalSchedule(this.checked)">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div id="device-schedule-settings">
+                  <div class="form-group">
+                    <label>Timezone</label>
+                    <select id="schedule-timezone">
+                      <option value="America/New_York">America/New_York (EST/EDT)</option>
+                      <option value="America/Chicago">America/Chicago (CST/CDT)</option>
+                      <option value="America/Denver">America/Denver (MST/MDT)</option>
+                      <option value="America/Phoenix">America/Phoenix (MST - no DST)</option>
+                      <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
+                      <option value="America/Anchorage">America/Anchorage (AKST/AKDT)</option>
+                      <option value="Pacific/Honolulu">Pacific/Honolulu (HST)</option>
+                      <option value="America/Toronto">America/Toronto (EST/EDT)</option>
+                      <option value="America/Vancouver">America/Vancouver (PST/PDT)</option>
+                      <option value="Europe/London">Europe/London (GMT/BST)</option>
+                      <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
+                      <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
+                      <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                      <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
+                      <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+                      <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
+                      <option value="UTC">UTC</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Touch Wake Brightness</label>
+                    <div class="slider-container">
+                      <input type="range" id="schedule-touch-brightness" min="10" max="100" value="30">
+                      <span class="slider-value" id="schedule-touch-brightness-value">30%</span>
+                    </div>
+                    <small style="color: #888;">Brightness when tapping screen at 0%</small>
+                  </div>
+                  <div class="form-group">
+                    <label>Display Timeout (seconds)</label>
+                    <input type="number" id="schedule-display-timeout" min="5" max="300" value="30" style="width: 100px;">
+                    <small style="color: #888;">How long to stay awake after touch</small>
+                  </div>
+                  <div class="form-group">
+                    <label>Schedule Periods</label>
+                    <div id="schedule-periods-list"></div>
+                    <button class="btn btn-sm btn-secondary" onclick="addSchedulePeriod()" style="margin-top: 8px;">+ Add Period</button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="actions">
@@ -954,6 +1100,86 @@
           <div class="empty-state">
             <p style="font-size: 1.2em; margin-bottom: 10px;">Select a plugin</p>
             <p>Choose a plugin from the list to configure it and discover external devices.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="tab-settings" class="hidden">
+      <div class="settings-layout">
+        <div class="card">
+          <h2>Global Settings</h2>
+          <p style="color: #888; margin-bottom: 20px;">Configure default settings that apply to all displays. Individual displays can override these settings.</p>
+
+          <div class="section">
+            <div class="collapsible-header" onclick="toggleCollapsible(this)">
+              <div class="section-title">
+                <span class="collapse-icon">▼</span>
+                Default Brightness Schedule
+                <label class="toggle-switch" onclick="event.stopPropagation();">
+                  <input type="checkbox" id="global-schedule-enabled" onchange="toggleGlobalScheduleEnabled(this.checked)">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+            <div class="collapsible-content" id="global-schedule-content">
+              <p style="color: #888; margin-bottom: 15px; font-size: 0.9em;">
+                This schedule will apply to all displays that have "Use Global Schedule" enabled in their individual settings.
+              </p>
+              <div class="form-group">
+                <label>Default Timezone</label>
+                <select id="global-schedule-timezone">
+                  <option value="America/New_York">America/New_York (EST/EDT)</option>
+                  <option value="America/Chicago">America/Chicago (CST/CDT)</option>
+                  <option value="America/Denver">America/Denver (MST/MDT)</option>
+                  <option value="America/Phoenix">America/Phoenix (MST - no DST)</option>
+                  <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
+                  <option value="America/Anchorage">America/Anchorage (AKST/AKDT)</option>
+                  <option value="Pacific/Honolulu">Pacific/Honolulu (HST)</option>
+                  <option value="America/Toronto">America/Toronto (EST/EDT)</option>
+                  <option value="America/Vancouver">America/Vancouver (PST/PDT)</option>
+                  <option value="Europe/London">Europe/London (GMT/BST)</option>
+                  <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
+                  <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
+                  <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                  <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
+                  <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+                  <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
+                  <option value="UTC">UTC</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Touch Wake Brightness</label>
+                <div class="slider-container">
+                  <input type="range" id="global-schedule-touch-brightness" min="10" max="100" value="30" oninput="document.getElementById('global-schedule-touch-brightness-value').textContent = this.value + '%'">
+                  <span class="slider-value" id="global-schedule-touch-brightness-value">30%</span>
+                </div>
+                <small style="color: #888;">Brightness when tapping screen at 0%</small>
+              </div>
+              <div class="form-group">
+                <label>Display Timeout (seconds)</label>
+                <input type="number" id="global-schedule-display-timeout" min="5" max="300" value="30" style="width: 100px;">
+                <small style="color: #888;">How long to stay awake after touch</small>
+              </div>
+              <div class="form-group">
+                <label>Schedule Periods</label>
+                <div id="global-schedule-periods-list"></div>
+                <button class="btn btn-sm btn-secondary" onclick="addGlobalSchedulePeriod()" style="margin-top: 8px;">+ Add Period</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-success" onclick="saveGlobalSettings()">Save Settings</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Display Schedule Overrides</h2>
+          <p style="color: #888; margin-bottom: 15px;">Shows which displays are using the global schedule and which have custom settings.</p>
+          <div id="device-schedule-status-list">
+            <div class="empty-state">Loading displays...</div>
           </div>
         </div>
       </div>
@@ -1156,6 +1382,11 @@
           }
           break;
 
+        case 'settings':
+          switchTab('settings');
+          loadGlobalSettings();
+          break;
+
         default:
           switchTab('devices');
       }
@@ -1170,6 +1401,7 @@
       document.getElementById('tab-scenes').classList.toggle('hidden', tabName !== 'scenes');
       document.getElementById('tab-discover').classList.toggle('hidden', tabName !== 'discover');
       document.getElementById('tab-plugins').classList.toggle('hidden', tabName !== 'plugins');
+      document.getElementById('tab-settings').classList.toggle('hidden', tabName !== 'settings');
     }
 
     async function waitForDevicesAndSelect(deviceId) {
@@ -1243,6 +1475,8 @@
           } else {
             navigateTo('/plugins');
           }
+        } else if (tabName === 'settings') {
+          navigateTo('/settings');
         }
       });
     });
@@ -1365,6 +1599,7 @@
     function loadScheduleConfig() {
       if (!selectedDevice) return;
 
+      const useGlobal = selectedDevice.config.display.useGlobalSchedule || false;
       const schedule = selectedDevice.config.display.brightnessSchedule || {
         enabled: false,
         timezone: 'America/Denver',
@@ -1377,14 +1612,40 @@
         displayTimeout: 30
       };
 
+      document.getElementById('use-global-schedule').checked = useGlobal;
       document.getElementById('schedule-enabled').checked = schedule.enabled;
       document.getElementById('schedule-timezone').value = schedule.timezone;
       document.getElementById('schedule-touch-brightness').value = schedule.touchBrightness;
       document.getElementById('schedule-touch-brightness-value').textContent = schedule.touchBrightness + '%';
       document.getElementById('schedule-display-timeout').value = schedule.displayTimeout;
 
-      updateBrightnessSliderState(schedule.enabled);
+      // Show/hide device-specific settings based on useGlobal
+      const deviceSettings = document.getElementById('device-schedule-settings');
+      if (deviceSettings) {
+        deviceSettings.style.display = useGlobal ? 'none' : 'block';
+      }
+
+      // Determine effective schedule for brightness slider state
+      const effectiveEnabled = useGlobal
+        ? (globalSettings?.brightnessSchedule?.enabled || false)
+        : schedule.enabled;
+
+      updateBrightnessSliderState(effectiveEnabled);
       renderSchedulePeriods(schedule.periods || [], schedule.timezone, schedule.enabled);
+    }
+
+    function toggleUseGlobalSchedule(useGlobal) {
+      const deviceSettings = document.getElementById('device-schedule-settings');
+      if (deviceSettings) {
+        deviceSettings.style.display = useGlobal ? 'none' : 'block';
+      }
+
+      // Update brightness slider state based on effective schedule
+      const effectiveEnabled = useGlobal
+        ? (globalSettings?.brightnessSchedule?.enabled || false)
+        : document.getElementById('schedule-enabled').checked;
+
+      updateBrightnessSliderState(effectiveEnabled);
     }
 
     function updateBrightnessSliderState(scheduleEnabled) {
@@ -1954,7 +2215,10 @@
       selectedDevice.config.display.theme = theme;
       selectedDevice.config.display.brightness = brightness;
 
-      // Update brightness schedule config
+      // Update useGlobalSchedule flag
+      selectedDevice.config.display.useGlobalSchedule = document.getElementById('use-global-schedule').checked;
+
+      // Update brightness schedule config (device-specific)
       selectedDevice.config.display.brightnessSchedule = getScheduleConfig();
 
       showToast('Saving configuration...', 'info');
@@ -2961,6 +3225,223 @@
         console.error('Failed to delete scene:', error);
         showToast('Failed to delete scene', 'error');
       }
+    }
+
+    // ============================================================================
+    // Global Settings Functions
+    // ============================================================================
+
+    let globalSettings = null;
+
+    async function loadGlobalSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        globalSettings = await response.json();
+
+        // Populate form fields
+        const schedule = globalSettings.brightnessSchedule;
+        document.getElementById('global-schedule-enabled').checked = schedule.enabled;
+        document.getElementById('global-schedule-timezone').value = schedule.timezone;
+        document.getElementById('global-schedule-touch-brightness').value = schedule.touchBrightness;
+        document.getElementById('global-schedule-touch-brightness-value').textContent = schedule.touchBrightness + '%';
+        document.getElementById('global-schedule-display-timeout').value = schedule.displayTimeout;
+
+        // Render schedule periods
+        renderGlobalSchedulePeriods(schedule.periods);
+
+        // Update collapsible state based on enabled
+        const header = document.querySelector('#tab-settings .collapsible-header');
+        const content = document.getElementById('global-schedule-content');
+        if (schedule.enabled) {
+          header.classList.remove('collapsed');
+          content.classList.remove('collapsed');
+        } else {
+          header.classList.add('collapsed');
+          content.classList.add('collapsed');
+        }
+
+        // Load device schedule status
+        loadDeviceScheduleStatus();
+
+      } catch (error) {
+        console.error('Failed to load global settings:', error);
+        showToast('Failed to load settings', 'error');
+      }
+    }
+
+    function renderGlobalSchedulePeriods(periods) {
+      const container = document.getElementById('global-schedule-periods-list');
+      const timezone = document.getElementById('global-schedule-timezone').value;
+      const scheduleEnabled = document.getElementById('global-schedule-enabled').checked;
+
+      // Get active period index
+      const activePeriodIndex = scheduleEnabled ? getActivePeriodIndex(periods, timezone) : -1;
+
+      container.innerHTML = periods.map((period, index) => {
+        const isActive = index === activePeriodIndex;
+        return `
+          <div class="schedule-period ${isActive ? 'active-period' : ''}" data-index="${index}">
+            <span class="period-active-indicator" style="display: ${isActive ? 'inline-block' : 'none'}; color: #4CAF50; margin-right: 5px;">●</span>
+            <input type="text" class="period-name" value="${period.name}" placeholder="Period name" style="width: 100px;">
+            <input type="time" class="period-time" value="${period.startTime}">
+            <input type="range" class="period-brightness" min="0" max="100" value="${period.brightness}" oninput="this.nextElementSibling.textContent = this.value + '%'">
+            <span class="period-brightness-value">${period.brightness}%</span>
+            <button class="btn btn-sm btn-danger" onclick="removeGlobalSchedulePeriod(${index})" ${periods.length <= 1 ? 'disabled' : ''}>×</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getGlobalScheduleConfig() {
+      const periods = [];
+      document.querySelectorAll('#global-schedule-periods-list .schedule-period').forEach(el => {
+        periods.push({
+          name: el.querySelector('.period-name').value,
+          startTime: el.querySelector('.period-time').value,
+          brightness: parseInt(el.querySelector('.period-brightness').value)
+        });
+      });
+
+      // Sort periods by start time
+      periods.sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+      return {
+        enabled: document.getElementById('global-schedule-enabled').checked,
+        timezone: document.getElementById('global-schedule-timezone').value,
+        periods: periods,
+        touchBrightness: parseInt(document.getElementById('global-schedule-touch-brightness').value),
+        displayTimeout: parseInt(document.getElementById('global-schedule-display-timeout').value)
+      };
+    }
+
+    function addGlobalSchedulePeriod() {
+      const container = document.getElementById('global-schedule-periods-list');
+      const periodCount = container.querySelectorAll('.schedule-period').length;
+
+      if (periodCount >= 6) {
+        showToast('Maximum 6 periods allowed', 'error');
+        return;
+      }
+
+      const index = periodCount;
+      const periodHtml = `
+        <div class="schedule-period" data-index="${index}">
+          <span class="period-active-indicator" style="display: none; color: #4CAF50; margin-right: 5px;">●</span>
+          <input type="text" class="period-name" value="New Period" placeholder="Period name" style="width: 100px;">
+          <input type="time" class="period-time" value="12:00">
+          <input type="range" class="period-brightness" min="0" max="100" value="50" oninput="this.nextElementSibling.textContent = this.value + '%'">
+          <span class="period-brightness-value">50%</span>
+          <button class="btn btn-sm btn-danger" onclick="removeGlobalSchedulePeriod(${index})">×</button>
+        </div>
+      `;
+
+      container.insertAdjacentHTML('beforeend', periodHtml);
+
+      // Re-enable all delete buttons if more than 1 period
+      if (periodCount + 1 > 1) {
+        container.querySelectorAll('.btn-danger').forEach(btn => btn.disabled = false);
+      }
+    }
+
+    function removeGlobalSchedulePeriod(index) {
+      const container = document.getElementById('global-schedule-periods-list');
+      const periods = container.querySelectorAll('.schedule-period');
+
+      if (periods.length <= 1) {
+        showToast('At least one period required', 'error');
+        return;
+      }
+
+      periods[index].remove();
+
+      // Re-index remaining periods and update delete buttons
+      const remaining = container.querySelectorAll('.schedule-period');
+      remaining.forEach((el, i) => {
+        el.dataset.index = i;
+        el.querySelector('.btn-danger').setAttribute('onclick', `removeGlobalSchedulePeriod(${i})`);
+        el.querySelector('.btn-danger').disabled = remaining.length <= 1;
+      });
+    }
+
+    function toggleGlobalScheduleEnabled(enabled) {
+      const header = document.querySelector('#tab-settings .collapsible-header');
+      const content = document.getElementById('global-schedule-content');
+
+      if (enabled) {
+        header.classList.remove('collapsed');
+        content.classList.remove('collapsed');
+      } else {
+        header.classList.add('collapsed');
+        content.classList.add('collapsed');
+      }
+
+      // Re-render periods to update active indicator
+      const periods = [];
+      document.querySelectorAll('#global-schedule-periods-list .schedule-period').forEach(el => {
+        periods.push({
+          name: el.querySelector('.period-name').value,
+          startTime: el.querySelector('.period-time').value,
+          brightness: parseInt(el.querySelector('.period-brightness').value)
+        });
+      });
+      renderGlobalSchedulePeriods(periods);
+    }
+
+    async function saveGlobalSettings() {
+      try {
+        const brightnessSchedule = getGlobalScheduleConfig();
+
+        const response = await fetch('/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brightnessSchedule })
+        });
+
+        if (!response.ok) throw new Error('Failed to save settings');
+
+        globalSettings = await response.json();
+        showToast('Global settings saved', 'success');
+
+        // Reload device status to show updated info
+        loadDeviceScheduleStatus();
+
+      } catch (error) {
+        console.error('Failed to save global settings:', error);
+        showToast('Failed to save settings', 'error');
+      }
+    }
+
+    async function loadDeviceScheduleStatus() {
+      const container = document.getElementById('device-schedule-status-list');
+
+      if (devices.length === 0) {
+        container.innerHTML = '<div class="empty-state">No displays configured</div>';
+        return;
+      }
+
+      container.innerHTML = devices.map(device => {
+        const useGlobal = device.config?.display?.useGlobalSchedule;
+        const scheduleEnabled = useGlobal
+          ? globalSettings?.brightnessSchedule?.enabled
+          : device.config?.display?.brightnessSchedule?.enabled;
+
+        const statusClass = useGlobal ? 'using-global' : 'using-custom';
+        const statusText = useGlobal ? 'Using Global Schedule' : 'Custom Schedule';
+        const scheduleStatus = scheduleEnabled ? 'Enabled' : 'Disabled';
+
+        return `
+          <div class="device-schedule-item ${statusClass}">
+            <div class="device-schedule-info">
+              <strong>${device.name || device.id}</strong>
+              <span class="schedule-status ${scheduleEnabled ? 'enabled' : 'disabled'}">${scheduleStatus}</span>
+            </div>
+            <div class="device-schedule-type">
+              <span class="${useGlobal ? 'badge-global' : 'badge-custom'}">${statusText}</span>
+              <button class="btn btn-sm btn-secondary" onclick="navigateTo('/device/${device.id}')">Edit</button>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
     // Initial load

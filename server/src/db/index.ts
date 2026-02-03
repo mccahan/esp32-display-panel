@@ -6,6 +6,7 @@ import { ButtonBinding } from '../plugins/types';
 const DATA_DIR = path.join(__dirname, '../../data');
 const DEVICES_FILE = path.join(DATA_DIR, 'devices.json');
 const SCENES_FILE = path.join(DATA_DIR, 'scenes.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
 // Re-export ButtonBinding for convenience
 export { ButtonBinding } from '../plugins/types';
@@ -115,6 +116,13 @@ export interface DisplayConfig {
   dayNightMode: DayNightConfig;
   lcars: LCARSConfig;
   brightnessSchedule?: BrightnessScheduleConfig;
+  useGlobalSchedule?: boolean;  // If true, use global brightness schedule instead of device-specific
+}
+
+// Global settings (server-wide configuration)
+export interface GlobalSettings {
+  brightnessSchedule: BrightnessScheduleConfig;
+  updatedAt: number;
 }
 
 // Server configuration
@@ -375,6 +383,91 @@ export function generateSceneId(): string {
   return 'scene-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 }
 
+// ============================================================================
+// Global Settings Storage
+// ============================================================================
+
+let globalSettings: GlobalSettings | null = null;
+
+// Default global settings
+function createDefaultGlobalSettings(): GlobalSettings {
+  return {
+    brightnessSchedule: {
+      enabled: false,
+      timezone: 'America/Denver',
+      periods: [
+        { name: 'Day', startTime: '07:00', brightness: 80 },
+        { name: 'Night', startTime: '20:00', brightness: 40 },
+        { name: 'Late Night', startTime: '23:00', brightness: 0 }
+      ],
+      touchBrightness: 30,
+      displayTimeout: 30
+    },
+    updatedAt: Date.now()
+  };
+}
+
+// Load global settings from file
+export function loadGlobalSettings(): void {
+  try {
+    if (fs.existsSync(SETTINGS_FILE)) {
+      const data = fs.readFileSync(SETTINGS_FILE, 'utf-8');
+      globalSettings = JSON.parse(data);
+      console.log('Loaded global settings from storage');
+    } else {
+      globalSettings = createDefaultGlobalSettings();
+      saveGlobalSettings();
+      console.log('Created default global settings');
+    }
+  } catch (error) {
+    console.error('Failed to load global settings:', error);
+    globalSettings = createDefaultGlobalSettings();
+  }
+}
+
+// Save global settings to file
+export function saveGlobalSettings(): void {
+  try {
+    if (globalSettings) {
+      fs.writeFileSync(SETTINGS_FILE, JSON.stringify(globalSettings, null, 2));
+    }
+  } catch (error) {
+    console.error('Failed to save global settings:', error);
+  }
+}
+
+// Get global settings
+export function getGlobalSettings(): GlobalSettings {
+  if (!globalSettings) {
+    loadGlobalSettings();
+  }
+  return globalSettings!;
+}
+
+// Update global settings
+export function updateGlobalSettings(settings: Partial<GlobalSettings>): GlobalSettings {
+  if (!globalSettings) {
+    loadGlobalSettings();
+  }
+  globalSettings = {
+    ...globalSettings!,
+    ...settings,
+    updatedAt: Date.now()
+  };
+  saveGlobalSettings();
+  return globalSettings;
+}
+
+// Get effective brightness schedule for a device (respects useGlobalSchedule flag)
+export function getEffectiveBrightnessSchedule(device: Device): BrightnessScheduleConfig | undefined {
+  const useGlobal = device.config?.display?.useGlobalSchedule;
+  if (useGlobal) {
+    return getGlobalSettings().brightnessSchedule;
+  }
+  return device.config?.display?.brightnessSchedule;
+}
+
 // Initialize
 loadDevices();
 loadGlobalScenes();
+loadGlobalSettings();
