@@ -285,11 +285,11 @@ export async function pushReportingUrlToDevice(
 // Fetch device's actual reporting URL from the device itself
 async function fetchDeviceReportingUrl(device: Device): Promise<string | null> {
   try {
-    const url = `http://${device.ip}/api/device/info`;
+    const url = `http://${device.ip}/api/info`;
     const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (response.ok) {
-      const info = await response.json() as { reportingUrl?: string };
-      return info.reportingUrl || null;
+      const info = await response.json() as { reporting_url?: string };
+      return info.reporting_url || null;
     }
     return null;
   } catch {

@@ -535,6 +535,14 @@ void DisplayWebServer::setupRoutes() {
         serializeJson(doc, response);
         request->send(200, "application/json", response);
     });
+
+    // Log 404 errors
+    server.onNotFound([](AsyncWebServerRequest *request) {
+        Serial.printf("WebServer: 404 Not Found - %s %s\n",
+            request->methodToString(),
+            request->url().c_str());
+        request->send(404, "application/json", "{\"error\":\"Not found\"}");
+    });
 }
 
 String DisplayWebServer::getIndexPage() {
