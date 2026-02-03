@@ -1425,6 +1425,7 @@ void UIManager::createLCARSCard(int index, const ButtonConfig& btnConfig, int x,
     lv_obj_set_style_bg_opa(card.card, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(card.card, 20, 0);
     lv_obj_set_style_border_width(card.card, 0, 0);
+    lv_obj_set_style_pad_left(card.card, 8, 0);  // Minimal left padding for icons
 
     // Make clickable
     lv_obj_add_flag(card.card, LV_OBJ_FLAG_CLICKABLE);
@@ -1433,7 +1434,7 @@ void UIManager::createLCARSCard(int index, const ButtonConfig& btnConfig, int x,
     // LCARS layout: Icon on left, text stacked on right
     // Icon - vertically centered on left side, use image for fans
     // Smaller icon for shorter cards
-    int iconOffset = (h >= 80) ? 15 : 10;
+    int iconOffset = 0;  // Use card padding instead
     const lv_font_t* iconFont = (h >= 80) ? &lv_font_montserrat_28 : &lv_font_montserrat_20;
 
     if (btnConfig.type == ButtonType::FAN) {
@@ -1475,8 +1476,8 @@ void UIManager::createLCARSCard(int index, const ButtonConfig& btnConfig, int x,
 
     if (h >= 80) {
         // Tall cards
-        textStartX = 42;
-        textWidth = w - 50;  // More room for text
+        textStartX = 32;
+        textWidth = w - 38;  // More room for text
         if (nameLen > 18) {
             lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_12, 0);
         } else if (nameLen > 14) {
@@ -1486,8 +1487,8 @@ void UIManager::createLCARSCard(int index, const ButtonConfig& btnConfig, int x,
         }
     } else {
         // Short cards: use smaller fonts
-        textStartX = 38;
-        textWidth = w - 45;
+        textStartX = 28;
+        textWidth = w - 34;
         if (nameLen > 16) {
             lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_12, 0);
         } else {
