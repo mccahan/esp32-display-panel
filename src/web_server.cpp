@@ -30,6 +30,7 @@ String DisplayWebServer::getIPAddress() {
 void DisplayWebServer::setupOTA() {
     // ElegantOTA provides a nice web UI for firmware updates
     ElegantOTA.begin(&server);
+    ElegantOTA.setAutoReboot(true);  // Auto reboot after successful update
 
     // OTA progress callbacks
     ElegantOTA.onStart([]() {
@@ -53,10 +54,13 @@ void DisplayWebServer::setupOTA() {
         if (success) {
             Serial.println("OTA Update Complete!");
             Serial.println("Rebooting in 1 second...");
+            Serial.println("========================================\n");
+            delay(1000);
+            ESP.restart();
         } else {
             Serial.println("OTA Update FAILED!");
+            Serial.println("========================================\n");
         }
-        Serial.println("========================================\n");
     });
 
     Serial.println("OTA updates available at /update");

@@ -58,7 +58,16 @@ curl -o screenshot.bmp http://<device-ip>/api/screenshot/download
 ```
 
 ### OTA Firmware Update
-Upload `.pio/build/esp32s3/firmware.bin` at `http://<device-ip>/update`
+
+**Browser:** Upload `.pio/build/esp32s3/firmware.bin` at `http://<device-ip>/update`
+
+**curl:**
+```bash
+# Get MD5 hash and upload via ElegantOTA endpoints
+MD5=$(md5 -q .pio/build/esp32s3/firmware.bin)
+curl -s "http://<device-ip>/ota/start?mode=fr&hash=$MD5"
+curl -X POST -F "file=@.pio/build/esp32s3/firmware.bin" http://<device-ip>/ota/upload
+```
 
 ## Server Architecture
 
