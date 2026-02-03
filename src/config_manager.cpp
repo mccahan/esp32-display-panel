@@ -138,6 +138,8 @@ bool ConfigManager::parseConfigJson(const String& json) {
             button.type = ButtonType::SWITCH;
         } else if (typeStr == "fan") {
             button.type = ButtonType::FAN;
+        } else if (typeStr == "scene") {
+            button.type = ButtonType::SCENE;
         } else {
             button.type = ButtonType::LIGHT;
         }
@@ -147,6 +149,7 @@ bool ConfigManager::parseConfigJson(const String& json) {
         button.subtitle = btn["subtitle"] | "";
         button.speedSteps = btn["speedSteps"] | 0;  // 0 = simple on/off, 3 = low/med/high
         button.speedLevel = btn["speedLevel"] | 0;
+        button.sceneId = btn["sceneId"] | "";  // Scene ID for scene-type buttons
         config.buttons.push_back(button);
     }
 
@@ -223,6 +226,7 @@ String ConfigManager::toJson() {
         const char* typeStr = "light";
         if (btn.type == ButtonType::SWITCH) typeStr = "switch";
         else if (btn.type == ButtonType::FAN) typeStr = "fan";
+        else if (btn.type == ButtonType::SCENE) typeStr = "scene";
         button["type"] = typeStr;
         button["name"] = btn.name;
         button["icon"] = btn.icon;
@@ -233,6 +237,9 @@ String ConfigManager::toJson() {
         if (btn.type == ButtonType::FAN) {
             button["speedSteps"] = btn.speedSteps;
             button["speedLevel"] = btn.speedLevel;
+        }
+        if (btn.type == ButtonType::SCENE && btn.sceneId.length() > 0) {
+            button["sceneId"] = btn.sceneId;
         }
     }
 

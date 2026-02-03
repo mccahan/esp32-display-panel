@@ -1,6 +1,13 @@
 #include "ui_manager.h"
 #include "lcars_elbow.h"
 #include "fan_icon.h"
+#include "garage_icon.h"
+#include "sleep_icon.h"
+#include "ceiling_light_icon.h"
+#include "bulb_icon.h"
+#include "door_icon.h"
+#include "moon_icon.h"
+#include "sun_icon.h"
 #include <WiFi.h>
 
 // Global instance
@@ -37,15 +44,73 @@ void UIManager::requestRebuild() {
     Serial.println("UIManager: Rebuild requested (will execute in main loop)");
 }
 
-void UIManager::update() {
-    if (needsRebuild) {
-        needsRebuild = false;
-        Serial.println("UIManager: Executing deferred rebuild");
-        rebuildUI();
+// Animation state for brightness fade during rebuild
+static bool rebuildFadeInProgress = false;
+static uint8_t rebuildTargetBrightness = 80;
+static int rebuildFadeStep = 0;  // 0=fade out, 1=rebuild, 2=fade in, 3=done
 
-        // Apply brightness from config
+void UIManager::update() {
+    if (needsRebuild && !rebuildFadeInProgress) {
+        needsRebuild = false;
+        rebuildFadeInProgress = true;
+        rebuildFadeStep = 0;
+
+        // Store target brightness before fading
         const DeviceConfig& config = configManager.getConfig();
-        setBrightness(config.display.brightness);
+        rebuildTargetBrightness = config.display.brightness;
+
+        Serial.println("UIManager: Starting rebuild with brightness fade");
+    }
+
+    // Handle multi-step rebuild with brightness animation
+    if (rebuildFadeInProgress) {
+        static unsigned long lastFadeTime = 0;
+        static uint8_t fadeValue = 100;
+        unsigned long now = millis();
+
+        switch (rebuildFadeStep) {
+            case 0:  // Fade out
+                if (now - lastFadeTime >= 10) {  // ~100 FPS smooth fade
+                    lastFadeTime = now;
+                    if (fadeValue > 0) {
+                        fadeValue = (fadeValue > 5) ? fadeValue - 5 : 0;
+                        setBrightness(fadeValue);
+                    } else {
+                        Serial.println("UIManager: Fade out complete, rebuilding UI");
+                        rebuildFadeStep = 1;
+                    }
+                }
+                break;
+
+            case 1:  // Rebuild UI (instant)
+                rebuildUI();
+                fadeValue = 0;
+                rebuildFadeStep = 2;
+                lastFadeTime = now;
+                Serial.println("UIManager: UI rebuilt, starting fade in");
+                break;
+
+            case 2:  // Fade in
+                if (now - lastFadeTime >= 10) {  // ~100 FPS smooth fade
+                    lastFadeTime = now;
+                    if (fadeValue < rebuildTargetBrightness) {
+                        uint8_t step = (rebuildTargetBrightness > fadeValue + 5) ? 5 : (rebuildTargetBrightness - fadeValue);
+                        fadeValue += step;
+                        setBrightness(fadeValue);
+                    } else {
+                        setBrightness(rebuildTargetBrightness);
+                        Serial.printf("UIManager: Fade in complete, brightness at %d%%\n", rebuildTargetBrightness);
+                        rebuildFadeStep = 3;
+                    }
+                }
+                break;
+
+            case 3:  // Done
+                rebuildFadeInProgress = false;
+                rebuildFadeStep = 0;
+                fadeValue = 100;  // Reset for next rebuild
+                break;
+        }
     }
 }
 
@@ -333,6 +398,8 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
     card.currentState = btnConfig.state;
     card.speedSteps = btnConfig.speedSteps;
     card.speedLevel = btnConfig.speedLevel;
+    card.isSceneButton = (btnConfig.type == ButtonType::SCENE);
+    card.sceneId = btnConfig.sceneId;
 
     // Calculate card size
     int cols, rows, cardWidth, cardHeight, gap;
@@ -391,19 +458,29 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
         lv_obj_set_style_bg_opa(cornerBR2, LV_OPA_80, 0);
         lv_obj_set_style_border_width(cornerBR2, 0, 0);
 
-        // Large centered icon at top - use image for fans
+        // Large centered icon at top - use image for fans and custom icons, symbols for others
         if (btnConfig.type == ButtonType::FAN) {
             card.icon = lv_img_create(card.card);
             lv_img_set_src(card.icon, &fan_icon);
             lv_obj_set_style_img_recolor(card.icon, themeEngine.getIconColor(card.currentState, index), 0);
             lv_obj_set_style_img_recolor_opa(card.icon, LV_OPA_COVER, 0);
             lv_obj_align(card.icon, LV_ALIGN_TOP_MID, 0, 15);
+        } else if (isImageIcon(btnConfig.icon)) {
+            // Use custom image icon
+            card.icon = lv_img_create(card.card);
+            lv_img_set_src(card.icon, getIconImage(btnConfig.icon));
+            lv_color_t iconColor = (btnConfig.type == ButtonType::SCENE) ? cardNeonColor : themeEngine.getIconColor(card.currentState, index);
+            lv_obj_set_style_img_recolor(card.icon, iconColor, 0);
+            lv_obj_set_style_img_recolor_opa(card.icon, LV_OPA_COVER, 0);
+            lv_obj_align(card.icon, LV_ALIGN_TOP_MID, 0, 15);
         } else {
+            // Use text symbol
             card.icon = lv_label_create(card.card);
             const char* iconSymbol = getIconSymbol(btnConfig.icon);
             lv_label_set_text(card.icon, iconSymbol);
             lv_obj_set_style_text_font(card.icon, &lv_font_montserrat_28, 0);
-            lv_obj_set_style_text_color(card.icon, themeEngine.getIconColor(card.currentState, index), 0);
+            lv_color_t iconColor = (btnConfig.type == ButtonType::SCENE) ? cardNeonColor : themeEngine.getIconColor(card.currentState, index);
+            lv_obj_set_style_text_color(card.icon, iconColor, 0);
             lv_obj_align(card.icon, LV_ALIGN_TOP_MID, 0, 15);
         }
 
@@ -416,9 +493,13 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
         themeEngine.styleLabel(card.nameLabel, true);
         lv_obj_align(card.nameLabel, LV_ALIGN_CENTER, 0, 10);
 
-        // Status text: [ONLINE] / [OFFLINE] with brackets
+        // Status text: [ONLINE] / [OFFLINE] - scene buttons don't show status
         card.stateLabel = lv_label_create(card.card);
-        lv_label_set_text(card.stateLabel, card.currentState ? "[ONLINE]" : "[OFFLINE]");
+        if (btnConfig.type == ButtonType::SCENE) {
+            lv_label_set_text(card.stateLabel, "");  // No status text for scene buttons
+        } else {
+            lv_label_set_text(card.stateLabel, card.currentState ? "[ONLINE]" : "[OFFLINE]");
+        }
         lv_obj_set_style_text_font(card.stateLabel, &lv_font_montserrat_14, 0);
         lv_obj_set_style_text_color(card.stateLabel, themeEngine.getIconColor(card.currentState, index), 0);
         lv_obj_align(card.stateLabel, LV_ALIGN_BOTTOM_MID, 0, -10);
@@ -426,15 +507,23 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
         // No toggle switch for cyberpunk
         card.toggle = nullptr;
     } else {
-        // Standard style with toggle switch
-        // Icon - use image for fans
+        // Standard style with toggle switch (except for scene buttons)
+        // Icon - use image for fans and custom icons, symbols for others
         if (btnConfig.type == ButtonType::FAN) {
             card.icon = lv_img_create(card.card);
             lv_img_set_src(card.icon, &fan_icon);
             lv_obj_set_style_img_recolor(card.icon, themeEngine.getIconColor(card.currentState, index), 0);
             lv_obj_set_style_img_recolor_opa(card.icon, LV_OPA_COVER, 0);
             lv_obj_align(card.icon, LV_ALIGN_TOP_LEFT, 18, 18);
+        } else if (isImageIcon(btnConfig.icon)) {
+            // Use custom image icon
+            card.icon = lv_img_create(card.card);
+            lv_img_set_src(card.icon, getIconImage(btnConfig.icon));
+            lv_obj_set_style_img_recolor(card.icon, themeEngine.getIconColor(card.currentState, index), 0);
+            lv_obj_set_style_img_recolor_opa(card.icon, LV_OPA_COVER, 0);
+            lv_obj_align(card.icon, LV_ALIGN_TOP_LEFT, 18, 18);
         } else {
+            // Use text symbol
             card.icon = lv_label_create(card.card);
             const char* iconSymbol = getIconSymbol(btnConfig.icon);
             lv_label_set_text(card.icon, iconSymbol);
@@ -443,17 +532,22 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
             lv_obj_align(card.icon, LV_ALIGN_TOP_LEFT, 18, 18);
         }
 
-        // Toggle switch
-        card.toggle = lv_switch_create(card.card);
-        lv_obj_set_size(card.toggle, 50, 26);
-        lv_obj_align(card.toggle, LV_ALIGN_TOP_RIGHT, -15, 18);
-        themeEngine.styleSwitch(card.toggle);
+        // Toggle switch (not for scene buttons)
+        if (btnConfig.type == ButtonType::SCENE) {
+            card.toggle = nullptr;
+            // No toggle or label for scene buttons - they're just tappable
+        } else {
+            card.toggle = lv_switch_create(card.card);
+            lv_obj_set_size(card.toggle, 50, 26);
+            lv_obj_align(card.toggle, LV_ALIGN_TOP_RIGHT, -15, 18);
+            themeEngine.styleSwitch(card.toggle);
 
-        if (card.currentState) {
-            lv_obj_add_state(card.toggle, LV_STATE_CHECKED);
+            if (card.currentState) {
+                lv_obj_add_state(card.toggle, LV_STATE_CHECKED);
+            }
+
+            lv_obj_add_event_cb(card.toggle, onToggleChanged, LV_EVENT_VALUE_CHANGED, (void*)(intptr_t)index);
         }
-
-        lv_obj_add_event_cb(card.toggle, onToggleChanged, LV_EVENT_VALUE_CHANGED, (void*)(intptr_t)index);
 
         // Room name label
         card.nameLabel = lv_label_create(card.card);
@@ -465,7 +559,11 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
         // Status text (for themes that show it)
         if (themeEngine.showsStatusText()) {
             card.stateLabel = lv_label_create(card.card);
-            lv_label_set_text(card.stateLabel, themeEngine.getStateText(card.currentState));
+            if (btnConfig.type == ButtonType::SCENE) {
+                lv_label_set_text(card.stateLabel, "Tap to run");
+            } else {
+                lv_label_set_text(card.stateLabel, themeEngine.getStateText(card.currentState));
+            }
             lv_obj_set_style_text_font(card.stateLabel, &lv_font_montserrat_14, 0);
             lv_obj_set_style_text_color(card.stateLabel, themeEngine.getIconColor(card.currentState, index), 0);
             lv_obj_align(card.stateLabel, LV_ALIGN_BOTTOM_RIGHT, -15, -18);
@@ -1343,6 +1441,13 @@ void UIManager::createLCARSCard(int index, const ButtonConfig& btnConfig, int x,
         lv_obj_set_style_img_recolor(card.icon, card.currentState ? lv_color_white() : lcarsYellow, 0);
         lv_obj_set_style_img_recolor_opa(card.icon, LV_OPA_COVER, 0);
         lv_obj_align(card.icon, LV_ALIGN_LEFT_MID, iconOffset, 0);
+    } else if (isImageIcon(btnConfig.icon)) {
+        // Use custom image icon
+        card.icon = lv_img_create(card.card);
+        lv_img_set_src(card.icon, getIconImage(btnConfig.icon));
+        lv_obj_set_style_img_recolor(card.icon, card.currentState ? lv_color_white() : lcarsYellow, 0);
+        lv_obj_set_style_img_recolor_opa(card.icon, LV_OPA_COVER, 0);
+        lv_obj_align(card.icon, LV_ALIGN_LEFT_MID, iconOffset, 0);
     } else {
         card.icon = lv_label_create(card.card);
         const char* iconSymbol = getIconSymbol(btnConfig.icon);
@@ -1514,6 +1619,54 @@ void UIManager::onCardClicked(lv_event_t* e) {
     if (index >= 0 && index < uiManager.numButtons) {
         UIButtonCard& card = uiManager.buttonCards[index];
 
+        // For scene buttons, call the scene callback with visual feedback
+        if (card.isSceneButton) {
+            Serial.printf("UIManager: Scene button %d clicked, scene: %s\n", card.buttonId, card.sceneId.c_str());
+
+            // Visual feedback: flash the card with a brief highlight animation
+            lv_obj_t* cardObj = card.card;
+
+            // Store original background color and create flash effect
+            lv_color_t originalBg = lv_obj_get_style_bg_color(cardObj, 0);
+            lv_opa_t originalOpa = lv_obj_get_style_bg_opa(cardObj, 0);
+
+            // Flash with bright accent color (purple for scenes)
+            lv_color_t flashColor = lv_color_hex(0xa855f7);  // Purple
+            if (themeEngine.isCyberpunk()) {
+                flashColor = lv_color_hex(0xff0080);  // Neon pink for cyberpunk
+            } else if (themeEngine.isLCARS()) {
+                flashColor = lv_color_hex(0xCC7832);  // LCARS orange
+            }
+
+            // Apply flash effect
+            lv_obj_set_style_bg_color(cardObj, flashColor, 0);
+            lv_obj_set_style_bg_opa(cardObj, LV_OPA_80, 0);
+
+            // Create animation to restore original color
+            lv_anim_t anim;
+            lv_anim_init(&anim);
+            lv_anim_set_var(&anim, cardObj);
+            lv_anim_set_time(&anim, 200);  // 200ms flash duration
+            lv_anim_set_delay(&anim, 100); // Small delay to show flash
+            lv_anim_set_exec_cb(&anim, [](void* obj, int32_t val) {
+                lv_obj_set_style_bg_opa((lv_obj_t*)obj, val, 0);
+            });
+            lv_anim_set_values(&anim, LV_OPA_80, originalOpa);
+            lv_anim_set_path_cb(&anim, lv_anim_path_ease_out);
+            lv_anim_set_ready_cb(&anim, [](lv_anim_t* a) {
+                // Restore original background (in case theme changed)
+                lv_obj_t* obj = (lv_obj_t*)a->var;
+                themeEngine.styleCard(obj, false);  // Re-apply theme styling
+            });
+            lv_anim_start(&anim);
+
+            // Use the button callback to trigger the scene
+            if (uiManager.buttonCallback) {
+                uiManager.buttonCallback(card.buttonId, true);  // Always send "true" for scene activation
+            }
+            return;
+        }
+
         // For fans with speed control, show the overlay instead of toggling
         if (card.speedSteps > 0) {
             uiManager.showFanOverlay(index);
@@ -1553,8 +1706,14 @@ void UIManager::onSceneClicked(lv_event_t* e) {
 
 const char* UIManager::getIconSymbol(const String& iconName) {
     // Map icon names to LVGL symbols
-    if (iconName == "charge" || iconName == "light" || iconName == "bulb") {
-        return LV_SYMBOL_CHARGE;
+    if (iconName == "bolt" || iconName == "charge") {
+        return LV_SYMBOL_CHARGE;  // Lightning bolt
+    } else if (iconName == "light" || iconName == "bulb") {
+        return "\xEF\x83\xAB";  // Font Awesome lightbulb (U+F0EB) - falls back to charge if not in font
+    } else if (iconName == "moon") {
+        return LV_SYMBOL_EYE_CLOSE;  // Use eye-close as moon substitute
+    } else if (iconName == "sun") {
+        return LV_SYMBOL_IMAGE;  // Use image symbol as sun substitute (bright/display)
     } else if (iconName == "fan" || iconName == "ventilation") {
         return LV_SYMBOL_REFRESH;  // Use refresh as fan symbol (circular motion)
     } else if (iconName == "power" || iconName == "off") {
@@ -1601,4 +1760,35 @@ const char* UIManager::getIconSymbol(const String& iconName) {
 
     // Default
     return LV_SYMBOL_CHARGE;
+}
+
+// Check if an icon name requires an image (custom icon) instead of a text symbol
+bool UIManager::isImageIcon(const String& iconName) {
+    return (iconName == "garage" ||
+            iconName == "sleep" ||
+            iconName == "ceiling_light" || iconName == "ceiling-light" ||
+            iconName == "bulb" ||
+            iconName == "door" ||
+            iconName == "moon" ||
+            iconName == "sun");
+}
+
+// Get the image descriptor for an image-based icon
+const lv_img_dsc_t* UIManager::getIconImage(const String& iconName) {
+    if (iconName == "garage") {
+        return &garage_icon;
+    } else if (iconName == "sleep") {
+        return &sleep_icon;
+    } else if (iconName == "ceiling_light" || iconName == "ceiling-light") {
+        return &ceiling_light_icon;
+    } else if (iconName == "bulb") {
+        return &bulb_icon;
+    } else if (iconName == "door") {
+        return &door_icon;
+    } else if (iconName == "moon") {
+        return &moon_icon;
+    } else if (iconName == "sun") {
+        return &sun_icon;
+    }
+    return nullptr;
 }

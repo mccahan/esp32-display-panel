@@ -7,16 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #110 | 9:54 AM | 🟣 | Major Feature Commit: Fan Speed Control System | ~567 |
-| #109 | " | 🔵 | Pre-commit status check reveals fan speed control implementation scope | ~376 |
-| #61 | 9:19 AM | ✅ | Fan Overlay Color Scheme Update for LCARS Theme | ~395 |
-| #52 | 9:11 AM | 🔵 | Theme-Specific Card Visual Update Logic | ~430 |
-| #50 | 9:09 AM | 🔵 | LCARS Theme Layout Structure | ~465 |
-| #42 | 9:01 AM | ✅ | Speed Configuration Added to Standard Button Card Creation | ~348 |
-| #37 | 9:00 AM | ✅ | HomeKit Theme Definition Removed from Theme Engine | ~357 |
-| #23 | 8:46 AM | 🟣 | Added HomeKit Visual Update Logic to State Change Handler | ~417 |
-| #7 | 8:43 AM | 🔵 | Multi-Theme UI Manager with LCARS Layout | ~506 |
-| #5 | 8:42 AM | 🔵 | ESP32 Smart Display System Architecture | ~430 |
-| #4 | 8:40 AM | ✅ | Changes committed to git repository | ~259 |
-| #2 | " | ✅ | Device configuration and UI styling updates before commit | ~377 |
+| #83 | 9:35 AM | ✅ | Cleaned Up Previous Fan Icon Attempt | ~212 |
+| #78 | 9:34 AM | 🔴 | Fix Distorted Fan Icon in ESP32 Display | ~345 |
+| #73 | 9:27 AM | 🔵 | Fan Icon References in Overlay Code Located | ~348 |
 </claude-mem-context>

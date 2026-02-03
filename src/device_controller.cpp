@@ -30,9 +30,24 @@ void DeviceController::begin() {
 }
 
 void DeviceController::onButtonStateChanged(uint8_t buttonId, bool newState) {
+    const DeviceConfig& config = configManager.getConfig();
+
+    // Find the button to check its type
+    for (const ButtonConfig& btn : config.buttons) {
+        if (btn.id == buttonId) {
+            // Scene buttons don't have state, just trigger the scene
+            if (btn.type == ButtonType::SCENE) {
+                Serial.printf("DeviceController: Scene button %d pressed\n", buttonId);
+                sendButtonWebhook(buttonId, true);  // Send press event to server
+                return;
+            }
+            break;
+        }
+    }
+
     Serial.printf("DeviceController: Button %d changed to %s\n", buttonId, newState ? "ON" : "OFF");
 
-    // Update config
+    // Update config for non-scene buttons
     configManager.setButtonState(buttonId, newState);
 
     // Send webhook to server (non-blocking would be better, but keep it simple)

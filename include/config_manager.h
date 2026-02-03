@@ -13,7 +13,8 @@
 enum class ButtonType {
     LIGHT,
     SWITCH,
-    FAN
+    FAN,
+    SCENE
 };
 
 // LCARS text field configuration
@@ -46,6 +47,7 @@ struct ButtonConfig {
     String subtitle;    // Optional subtitle (e.g., for LCARS: "DECK 7")
     uint8_t speedSteps; // For fans: number of speed steps (0=on/off only, 3=off/low/med/high, etc.)
     uint8_t speedLevel; // Current speed level (0=off, 1-speedSteps for on states)
+    String sceneId;     // For scene buttons: the scene ID to execute
 };
 
 // Scene configuration

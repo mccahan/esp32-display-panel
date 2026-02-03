@@ -21,6 +21,8 @@ struct UIButtonCard {
     bool currentState;
     uint8_t speedSteps;    // For fans: number of speed steps
     uint8_t speedLevel;    // Current speed level
+    bool isSceneButton;    // True if this is a scene-type button
+    String sceneId;        // Scene ID for scene-type buttons
 };
 
 // Fan speed overlay state
@@ -83,6 +85,12 @@ public:
 
     // Get LVGL symbol for icon name
     static const char* getIconSymbol(const String& iconName);
+
+    // Check if icon uses an image instead of a symbol
+    static bool isImageIcon(const String& iconName);
+
+    // Get the image descriptor for an image-based icon
+    static const lv_img_dsc_t* getIconImage(const String& iconName);
 
     // Fan speed control
     void showFanOverlay(int cardIndex);
