@@ -94,13 +94,13 @@ bool ConfigManager::parseConfigJson(const String& json) {
     // Parse display settings
     JsonObject display = doc["display"];
     config.display.brightness = display["brightness"] | 80;
-    config.display.theme = display["theme"] | "dark_clean";
+    config.display.theme = display["theme"] | "dark_mode";
 
     // Parse day/night mode
     JsonObject dayNight = display["dayNightMode"];
     config.display.dayNight.enabled = dayNight["enabled"] | false;
     config.display.dayNight.dayTheme = dayNight["dayTheme"] | "light_mode";
-    config.display.dayNight.nightTheme = dayNight["nightTheme"] | "dark_clean";
+    config.display.dayNight.nightTheme = dayNight["nightTheme"] | "dark_mode";
     config.display.dayNight.dayStartHour = dayNight["dayStartHour"] | 7;
     config.display.dayNight.nightStartHour = dayNight["nightStartHour"] | 20;
 
@@ -420,10 +420,10 @@ void ConfigManager::createDefaultConfig() {
 
     // Display settings
     config.display.brightness = 80;
-    config.display.theme = "dark_clean";
+    config.display.theme = "dark_mode";
     config.display.dayNight.enabled = false;
     config.display.dayNight.dayTheme = "light_mode";
-    config.display.dayNight.nightTheme = "dark_clean";
+    config.display.dayNight.nightTheme = "dark_mode";
     config.display.dayNight.dayStartHour = 7;
     config.display.dayNight.nightStartHour = 20;
 

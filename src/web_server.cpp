@@ -4,6 +4,7 @@
 #include "ui_manager.h"
 #include "theme_engine.h"
 #include "brightness_scheduler.h"
+#include "theme_scheduler.h"
 #include "time_manager.h"
 #include <ArduinoJson.h>
 #include <WiFi.h>
@@ -334,6 +335,9 @@ void DisplayWebServer::setupRoutes() {
 
                     // Refresh brightness scheduler with new config
                     brightnessScheduler.refresh();
+
+                    // Refresh theme scheduler with new config
+                    themeScheduler.refresh();
 
                     request->send(200, "application/json", "{\"success\":true,\"message\":\"Config applied\"}");
                 } else {

@@ -7,14 +7,5 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #481 | 11:07 PM | 🔵 | UI Manager Interface and Brightness Control | ~418 |
-| #469 | 11:04 PM | 🔵 | ESP32 Configuration Manager Structure | ~440 |
-| #126 | 10:18 AM | 🟣 | Adding Cyberpunk Visual Decorations and Theme Enhancements | ~522 |
-| #125 | " | 🔵 | Git Repository Shows Diverged Branch with Modified UI Files | ~453 |
-| #113 | 9:57 AM | 🟣 | Deployed Custom Fan Icon with LCARS Header Adjustments to ESP32 | ~433 |
-| #90 | 9:37 AM | 🔵 | UI Manager Includes Config Manager Header | ~293 |
-| #86 | 9:36 AM | 🔵 | ButtonType Enum Definition Located in Config Manager | ~297 |
 | #82 | 9:35 AM | 🟣 | Generated LVGL A8 Alpha Image for Custom Fan Icon | ~461 |
-| #81 | 9:34 AM | 🔵 | LVGL Image Format Pattern in LCARS Elbow Header | ~335 |
-| #80 | " | 🔵 | LCARS Elbow Image Header File Structure Examined | ~396 |
 </claude-mem-context>

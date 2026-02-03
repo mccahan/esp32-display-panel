@@ -16,6 +16,7 @@
 #include "screenshot.h"
 #include "time_manager.h"
 #include "brightness_scheduler.h"
+#include "theme_scheduler.h"
 
 // Optional: include secrets.h for default WiFi credentials
 #if __has_include("secrets.h")
@@ -340,6 +341,9 @@ void setup() {
     // Initialize brightness scheduler
     brightnessScheduler.begin();
 
+    // Initialize theme scheduler (auto day/night theme switching)
+    themeScheduler.begin();
+
     // Start web server
     webServer.begin();
 
@@ -377,6 +381,9 @@ void loop() {
 
     // Update brightness scheduler
     brightnessScheduler.update();
+
+    // Update theme scheduler (auto day/night theme switching)
+    themeScheduler.update();
 
     // Small delay to prevent watchdog issues
     delay(5);

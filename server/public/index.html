@@ -649,6 +649,34 @@
     }
 
     /* Settings Tab Styles */
+    .settings-tabs {
+      display: flex;
+      gap: 2px;
+      border-bottom: 2px solid #2a2a4a;
+      margin-bottom: 20px;
+    }
+    .settings-tab {
+      padding: 12px 24px;
+      cursor: pointer;
+      color: #888;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .settings-tab:hover {
+      color: #fff;
+    }
+    .settings-tab.active {
+      color: #00d4ff;
+      border-bottom-color: #00d4ff;
+    }
+    .settings-panel {
+      display: none;
+    }
+    .settings-panel.active {
+      display: block;
+    }
     .settings-layout {
       display: grid;
       grid-template-columns: 2fr 1fr;
@@ -821,12 +849,14 @@
               <div class="form-row">
                 <div class="form-group">
                   <label>Theme</label>
-                  <select id="device-theme">
-                    <option value="dark_clean">Dark</option>
+                  <select id="device-theme" onchange="onDeviceThemeChange(this.value)">
+                    <option value="auto">Auto Light/Dark</option>
+                    <option value="dark_mode">Dark Mode</option>
                     <option value="light_mode">Light</option>
                     <option value="neon_cyberpunk">Neon Cyberpunk</option>
                     <option value="lcars">LCARS (Star Trek)</option>
                   </select>
+                  <small id="auto-theme-hint" class="hidden" style="color: #888; display: block; margin-top: 4px;">Uses global schedule from Settings tab</small>
                 </div>
                 <div class="form-group">
                   <label>Brightness</label>
@@ -1111,79 +1141,160 @@
 
     <!-- Settings Tab -->
     <div id="tab-settings" class="hidden">
-      <div class="settings-layout">
-        <div class="card">
-          <h2>Global Settings</h2>
-          <p style="color: #888; margin-bottom: 20px;">Configure default settings that apply to all displays. Individual displays can override these settings.</p>
+      <h2 style="color: #00d4ff; margin-bottom: 5px;">Global Settings</h2>
+      <p style="color: #888; margin-bottom: 20px;">Configure default settings that apply to all displays. Individual displays can override these settings.</p>
 
-          <div class="section">
-            <div class="collapsible-header" onclick="toggleCollapsible(this)">
-              <div class="section-title">
-                <span class="collapse-icon">▼</span>
-                Default Brightness Schedule
-                <label class="toggle-switch" onclick="event.stopPropagation();">
-                  <input type="checkbox" id="global-schedule-enabled" onchange="toggleGlobalScheduleEnabled(this.checked)">
-                  <span class="toggle-slider"></span>
-                </label>
+      <!-- Settings Sub-tabs -->
+      <div class="settings-tabs">
+        <div class="settings-tab active" data-settings-tab="brightness" onclick="switchSettingsTab('brightness')">Brightness</div>
+        <div class="settings-tab" data-settings-tab="theme" onclick="switchSettingsTab('theme')">Light/Dark Mode</div>
+      </div>
+
+      <!-- Brightness Panel -->
+      <div id="settings-panel-brightness" class="settings-panel active">
+        <div class="settings-layout">
+          <div class="card">
+            <div class="section">
+              <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                <div class="section-title">
+                  <span class="collapse-icon">▼</span>
+                  Default Brightness Schedule
+                  <label class="toggle-switch" onclick="event.stopPropagation();">
+                    <input type="checkbox" id="global-schedule-enabled" onchange="toggleGlobalScheduleEnabled(this.checked)">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+              <div class="collapsible-content" id="global-schedule-content">
+                <p style="color: #888; margin-bottom: 15px; font-size: 0.9em;">
+                  This schedule will apply to all displays that have "Use Global Schedule" enabled in their individual settings.
+                </p>
+                <div class="form-group">
+                  <label>Default Timezone</label>
+                  <select id="global-schedule-timezone">
+                    <option value="America/New_York">America/New_York (EST/EDT)</option>
+                    <option value="America/Chicago">America/Chicago (CST/CDT)</option>
+                    <option value="America/Denver">America/Denver (MST/MDT)</option>
+                    <option value="America/Phoenix">America/Phoenix (MST - no DST)</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
+                    <option value="America/Anchorage">America/Anchorage (AKST/AKDT)</option>
+                    <option value="Pacific/Honolulu">Pacific/Honolulu (HST)</option>
+                    <option value="America/Toronto">America/Toronto (EST/EDT)</option>
+                    <option value="America/Vancouver">America/Vancouver (PST/PDT)</option>
+                    <option value="Europe/London">Europe/London (GMT/BST)</option>
+                    <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
+                    <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
+                    <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                    <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
+                    <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+                    <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
+                    <option value="UTC">UTC</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Touch Wake Brightness</label>
+                  <div class="slider-container">
+                    <input type="range" id="global-schedule-touch-brightness" min="10" max="100" value="30" oninput="document.getElementById('global-schedule-touch-brightness-value').textContent = this.value + '%'">
+                    <span class="slider-value" id="global-schedule-touch-brightness-value">30%</span>
+                  </div>
+                  <small style="color: #888;">Brightness when tapping screen at 0%</small>
+                </div>
+                <div class="form-group">
+                  <label>Display Timeout (seconds)</label>
+                  <input type="number" id="global-schedule-display-timeout" min="5" max="300" value="30" style="width: 100px;">
+                  <small style="color: #888;">How long to stay awake after touch</small>
+                </div>
+                <div class="form-group">
+                  <label>Schedule Periods</label>
+                  <div id="global-schedule-periods-list"></div>
+                  <button class="btn btn-sm btn-secondary" onclick="addGlobalSchedulePeriod()" style="margin-top: 8px;">+ Add Period</button>
+                </div>
               </div>
             </div>
-            <div class="collapsible-content" id="global-schedule-content">
-              <p style="color: #888; margin-bottom: 15px; font-size: 0.9em;">
-                This schedule will apply to all displays that have "Use Global Schedule" enabled in their individual settings.
-              </p>
-              <div class="form-group">
-                <label>Default Timezone</label>
-                <select id="global-schedule-timezone">
-                  <option value="America/New_York">America/New_York (EST/EDT)</option>
-                  <option value="America/Chicago">America/Chicago (CST/CDT)</option>
-                  <option value="America/Denver">America/Denver (MST/MDT)</option>
-                  <option value="America/Phoenix">America/Phoenix (MST - no DST)</option>
-                  <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
-                  <option value="America/Anchorage">America/Anchorage (AKST/AKDT)</option>
-                  <option value="Pacific/Honolulu">Pacific/Honolulu (HST)</option>
-                  <option value="America/Toronto">America/Toronto (EST/EDT)</option>
-                  <option value="America/Vancouver">America/Vancouver (PST/PDT)</option>
-                  <option value="Europe/London">Europe/London (GMT/BST)</option>
-                  <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
-                  <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
-                  <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
-                  <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
-                  <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
-                  <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
-                  <option value="UTC">UTC</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Touch Wake Brightness</label>
-                <div class="slider-container">
-                  <input type="range" id="global-schedule-touch-brightness" min="10" max="100" value="30" oninput="document.getElementById('global-schedule-touch-brightness-value').textContent = this.value + '%'">
-                  <span class="slider-value" id="global-schedule-touch-brightness-value">30%</span>
-                </div>
-                <small style="color: #888;">Brightness when tapping screen at 0%</small>
-              </div>
-              <div class="form-group">
-                <label>Display Timeout (seconds)</label>
-                <input type="number" id="global-schedule-display-timeout" min="5" max="300" value="30" style="width: 100px;">
-                <small style="color: #888;">How long to stay awake after touch</small>
-              </div>
-              <div class="form-group">
-                <label>Schedule Periods</label>
-                <div id="global-schedule-periods-list"></div>
-                <button class="btn btn-sm btn-secondary" onclick="addGlobalSchedulePeriod()" style="margin-top: 8px;">+ Add Period</button>
-              </div>
+
+            <div class="actions">
+              <button class="btn btn-success" onclick="saveGlobalSettings()">Save Brightness Settings</button>
             </div>
           </div>
 
-          <div class="actions">
-            <button class="btn btn-success" onclick="saveGlobalSettings()">Save Settings</button>
+          <div class="card">
+            <h2>Display Schedule Overrides</h2>
+            <p style="color: #888; margin-bottom: 15px;">Shows which displays are using the global brightness schedule and which have custom settings.</p>
+            <div id="device-schedule-status-list">
+              <div class="empty-state">Loading displays...</div>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div class="card">
-          <h2>Display Schedule Overrides</h2>
-          <p style="color: #888; margin-bottom: 15px;">Shows which displays are using the global schedule and which have custom settings.</p>
-          <div id="device-schedule-status-list">
-            <div class="empty-state">Loading displays...</div>
+      <!-- Light/Dark Mode Panel -->
+      <div id="settings-panel-theme" class="settings-panel">
+        <div class="settings-layout">
+          <div class="card">
+            <div class="section">
+              <div class="section-title">Auto Light/Dark Schedule</div>
+              <p style="color: #888; margin-bottom: 15px; font-size: 0.9em;">
+                Configure the day and night themes. Devices set to "Auto Light/Dark" will use this schedule.
+              </p>
+                <div class="form-row" style="display: flex; gap: 20px;">
+                  <div class="form-group" style="flex: 1;">
+                    <label>Day Theme</label>
+                    <select id="global-theme-day">
+                      <option value="light_mode">Light Mode</option>
+                      <option value="dark_mode">Dark Mode</option>
+                      <option value="neon_cyberpunk">Neon Cyberpunk</option>
+                      <option value="lcars">LCARS</option>
+                    </select>
+                    <small style="color: #888;">Theme used during daytime hours</small>
+                  </div>
+                  <div class="form-group" style="flex: 1;">
+                    <label>Night Theme</label>
+                    <select id="global-theme-night">
+                      <option value="dark_mode">Dark Mode</option>
+                      <option value="light_mode">Light Mode</option>
+                      <option value="neon_cyberpunk">Neon Cyberpunk</option>
+                      <option value="lcars">LCARS</option>
+                    </select>
+                    <small style="color: #888;">Theme used during nighttime hours</small>
+                  </div>
+                </div>
+                <div class="form-row" style="display: flex; gap: 20px;">
+                  <div class="form-group" style="flex: 1;">
+                    <label>Day Starts At</label>
+                    <select id="global-theme-day-start">
+                      <option value="5">5:00 AM</option>
+                      <option value="6">6:00 AM</option>
+                      <option value="7" selected>7:00 AM</option>
+                      <option value="8">8:00 AM</option>
+                      <option value="9">9:00 AM</option>
+                    </select>
+                    <small style="color: #888;">When to switch to day theme</small>
+                  </div>
+                  <div class="form-group" style="flex: 1;">
+                    <label>Night Starts At</label>
+                    <select id="global-theme-night-start">
+                      <option value="18">6:00 PM</option>
+                      <option value="19">7:00 PM</option>
+                      <option value="20" selected>8:00 PM</option>
+                      <option value="21">9:00 PM</option>
+                      <option value="22">10:00 PM</option>
+                    </select>
+                    <small style="color: #888;">When to switch to night theme</small>
+                  </div>
+                </div>
+            </div>
+
+            <div class="actions">
+              <button class="btn btn-success" onclick="saveGlobalSettings()">Save Theme Settings</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Display Theme Overrides</h2>
+            <p style="color: #888; margin-bottom: 15px;">Shows which displays are using the global theme schedule and which have custom settings.</p>
+            <div id="device-theme-schedule-status-list">
+              <div class="empty-state">Loading displays...</div>
+            </div>
           </div>
         </div>
       </div>
@@ -1539,6 +1650,9 @@
         // Load brightness schedule config
         loadScheduleConfig();
 
+        // Load theme config (handle auto theme display)
+        loadDeviceThemeConfig();
+
         // Device info
         document.getElementById('device-info').innerHTML = `
           <div class="info-item"><label>IP Address</label><span>${selectedDevice.ip}</span></div>
@@ -1849,6 +1963,38 @@
     document.getElementById('schedule-touch-brightness').addEventListener('input', (e) => {
       document.getElementById('schedule-touch-brightness-value').textContent = e.target.value + '%';
     });
+
+    // ============================================================================
+    // Device Theme Functions
+    // ============================================================================
+
+    function onDeviceThemeChange(theme) {
+      const hint = document.getElementById('auto-theme-hint');
+      if (theme === 'auto') {
+        hint.classList.remove('hidden');
+      } else {
+        hint.classList.add('hidden');
+      }
+    }
+
+    function loadDeviceThemeConfig() {
+      if (!selectedDevice) return;
+
+      // Check if using auto theme (dayNightMode enabled with useGlobalThemeSchedule)
+      const dayNightMode = selectedDevice.config.display.dayNightMode || {};
+      const useAuto = dayNightMode.enabled && selectedDevice.config.display.useGlobalThemeSchedule;
+
+      const themeSelect = document.getElementById('device-theme');
+      const hint = document.getElementById('auto-theme-hint');
+
+      if (useAuto) {
+        themeSelect.value = 'auto';
+        hint.classList.remove('hidden');
+      } else {
+        themeSelect.value = selectedDevice.config.display.theme;
+        hint.classList.add('hidden');
+      }
+    }
 
     function removeButton(index) {
       if (!selectedDevice) return;
@@ -2216,10 +2362,27 @@
       const brightness = parseInt(document.getElementById('device-brightness').value);
 
       selectedDevice.name = name;
-      selectedDevice.config.display.theme = theme;
       selectedDevice.config.display.brightness = brightness;
 
-      // Update useGlobalSchedule flag
+      // Handle auto theme - when "auto" is selected, enable dayNightMode with global schedule
+      if (theme === 'auto') {
+        selectedDevice.config.display.useGlobalThemeSchedule = true;
+        selectedDevice.config.display.dayNightMode = {
+          ...selectedDevice.config.display.dayNightMode,
+          enabled: true
+        };
+        // Keep the last static theme as fallback
+        // Don't change selectedDevice.config.display.theme
+      } else {
+        selectedDevice.config.display.theme = theme;
+        selectedDevice.config.display.useGlobalThemeSchedule = false;
+        selectedDevice.config.display.dayNightMode = {
+          ...selectedDevice.config.display.dayNightMode,
+          enabled: false
+        };
+      }
+
+      // Update useGlobalSchedule flag for brightness
       selectedDevice.config.display.useGlobalSchedule = document.getElementById('use-global-schedule').checked;
 
       // Update brightness schedule config (device-specific)
@@ -3262,12 +3425,29 @@
 
     let globalSettings = null;
 
+    // Switch between settings sub-tabs
+    function switchSettingsTab(tabName) {
+      // Update tab buttons
+      document.querySelectorAll('.settings-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.settingsTab === tabName);
+      });
+
+      // Update panels
+      document.querySelectorAll('.settings-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === `settings-panel-${tabName}`);
+      });
+    }
+
     async function loadGlobalSettings() {
       try {
+        // Refresh devices list to get latest config data
+        const devicesResponse = await fetch('/api/devices');
+        devices = await devicesResponse.json();
+
         const response = await fetch('/api/settings');
         globalSettings = await response.json();
 
-        // Populate form fields
+        // Populate brightness schedule form fields
         const schedule = globalSettings.brightnessSchedule;
         document.getElementById('global-schedule-enabled').checked = schedule.enabled;
         document.getElementById('global-schedule-timezone').value = schedule.timezone;
@@ -3278,19 +3458,32 @@
         // Render schedule periods
         renderGlobalSchedulePeriods(schedule.periods);
 
-        // Update collapsible state based on enabled
-        const header = document.querySelector('#tab-settings .collapsible-header');
-        const content = document.getElementById('global-schedule-content');
+        // Update brightness collapsible state based on enabled
+        const brightnessHeader = document.querySelector('#settings-panel-brightness .collapsible-header');
+        const brightnessContent = document.getElementById('global-schedule-content');
         if (schedule.enabled) {
-          header.classList.remove('collapsed');
-          content.classList.remove('collapsed');
+          brightnessHeader.classList.remove('collapsed');
+          brightnessContent.classList.remove('collapsed');
         } else {
-          header.classList.add('collapsed');
-          content.classList.add('collapsed');
+          brightnessHeader.classList.add('collapsed');
+          brightnessContent.classList.add('collapsed');
         }
+
+        // Populate theme schedule form fields
+        const themeSchedule = globalSettings.themeSchedule || {
+          dayTheme: 'light_mode',
+          nightTheme: 'dark_mode',
+          dayStartHour: 7,
+          nightStartHour: 20
+        };
+        document.getElementById('global-theme-day').value = themeSchedule.dayTheme;
+        document.getElementById('global-theme-night').value = themeSchedule.nightTheme;
+        document.getElementById('global-theme-day-start').value = themeSchedule.dayStartHour;
+        document.getElementById('global-theme-night-start').value = themeSchedule.nightStartHour;
 
         // Load device schedule status
         loadDeviceScheduleStatus();
+        loadDeviceThemeScheduleStatus();
 
       } catch (error) {
         console.error('Failed to load global settings:', error);
@@ -3416,14 +3609,77 @@
       renderGlobalSchedulePeriods(periods);
     }
 
+    function getGlobalThemeConfig() {
+      return {
+        enabled: true,  // Always enabled - devices opt-in by selecting "Auto Light/Dark" theme
+        dayTheme: document.getElementById('global-theme-day').value,
+        nightTheme: document.getElementById('global-theme-night').value,
+        dayStartHour: parseInt(document.getElementById('global-theme-day-start').value),
+        nightStartHour: parseInt(document.getElementById('global-theme-night-start').value)
+      };
+    }
+
+    async function loadDeviceThemeScheduleStatus() {
+      const container = document.getElementById('device-theme-schedule-status-list');
+
+      if (devices.length === 0) {
+        container.innerHTML = '<div class="empty-state">No displays configured</div>';
+        return;
+      }
+
+      container.innerHTML = devices.map(device => {
+        const useAutoTheme = device.config?.display?.useGlobalThemeSchedule === true;
+        const currentTheme = device.config?.display?.theme || 'dark_mode';
+
+        const themeLabel = useAutoTheme ? 'Auto Light/Dark' : currentTheme.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        const badgeClass = useAutoTheme ? 'badge-global' : 'badge-custom';
+
+        const pushButton = useAutoTheme
+          ? `<button class="btn btn-sm btn-primary" onclick="pushThemeScheduleToDevice('${device.id}')">Push</button>`
+          : '';
+
+        return `
+          <div class="device-schedule-item">
+            <div class="device-schedule-info">
+              <strong>${device.name || device.id}</strong>
+            </div>
+            <div class="device-schedule-type">
+              <span class="${badgeClass}">${themeLabel}</span>
+              ${pushButton}
+              <button class="btn btn-sm btn-secondary" onclick="navigateTo('/device/${device.id}')">Edit</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function pushThemeScheduleToDevice(deviceId) {
+      try {
+        showToast('Pushing theme schedule...', 'info');
+        const response = await fetch(`/api/devices/${deviceId}/config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+
+        if (!response.ok) throw new Error('Failed to push config');
+
+        showToast('Theme schedule pushed successfully', 'success');
+      } catch (error) {
+        console.error('Failed to push theme schedule:', error);
+        showToast('Failed to push theme schedule', 'error');
+      }
+    }
+
     async function saveGlobalSettings() {
       try {
         const brightnessSchedule = getGlobalScheduleConfig();
+        const themeSchedule = getGlobalThemeConfig();
 
         const response = await fetch('/api/settings', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ brightnessSchedule })
+          body: JSON.stringify({ brightnessSchedule, themeSchedule })
         });
 
         if (!response.ok) throw new Error('Failed to save settings');
@@ -3433,6 +3689,7 @@
 
         // Reload device status to show updated info
         loadDeviceScheduleStatus();
+        loadDeviceThemeScheduleStatus();
 
       } catch (error) {
         console.error('Failed to save global settings:', error);

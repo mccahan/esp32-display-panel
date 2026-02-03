@@ -165,11 +165,16 @@ void UIManager::createUI() {
     Serial.println("UIManager: Creating UI...");
 
     const DeviceConfig& config = configManager.getConfig();
-    const String& themeName = config.display.theme;
 
-    // Set theme
-    themeEngine.setTheme(themeName);
-    Serial.printf("UIManager: Using theme '%s'\n", themeName.c_str());
+    // Only set theme from config if dayNightMode is disabled.
+    // If dayNightMode is enabled, the themeScheduler handles the theme.
+    if (!config.display.dayNight.enabled) {
+        themeEngine.setTheme(config.display.theme);
+        Serial.printf("UIManager: Using static theme '%s'\n", config.display.theme.c_str());
+    } else {
+        Serial.printf("UIManager: Day/night mode enabled, using theme '%s' from scheduler\n",
+                      themeEngine.getCurrentThemeName().c_str());
+    }
 
     // Get screen and apply theme background
     screen = lv_scr_act();

@@ -3,6 +3,8 @@ import {
   Device,
   DeviceConfig,
   BrightnessScheduleConfig,
+  ThemeScheduleConfig,
+  DayNightConfig,
   getDevice,
   upsertDevice,
   deleteDevice,
@@ -37,23 +39,54 @@ function convertScheduleForDevice(schedule: BrightnessScheduleConfig | undefined
   };
 }
 
+// Convert theme schedule (dayNightMode) to the format ESP32 expects
+// The ESP32 expects the DayNightConfig format with the same field names
+// When useGlobalThemeSchedule is true, we force enabled=true since the user
+// explicitly selected "Auto Light/Dark" from the theme dropdown
+function convertThemeScheduleForDevice(
+  themeSchedule: ThemeScheduleConfig | DayNightConfig | undefined,
+  forceEnabled: boolean = false
+): DayNightConfig | undefined {
+  if (!themeSchedule) return undefined;
+
+  return {
+    enabled: forceEnabled ? true : themeSchedule.enabled,
+    dayTheme: themeSchedule.dayTheme,
+    nightTheme: themeSchedule.nightTheme,
+    dayStartHour: themeSchedule.dayStartHour,
+    nightStartHour: themeSchedule.nightStartHour
+  };
+}
+
 // Prepare device config for ESP32 consumption
 // - Applies global schedule if useGlobalSchedule is true
+// - Applies global theme schedule if useGlobalThemeSchedule is true
 // - Converts schedule format (IANA→POSIX timezone, startTime→startHour/startMinute)
 export function prepareConfigForDevice(device: Device): any {
+  const globalSettings = getGlobalSettings();
+
   // Determine which brightness schedule to use (global or device-specific)
   let effectiveSchedule = device.config.display.brightnessSchedule;
   if (device.config.display.useGlobalSchedule) {
-    const globalSettings = getGlobalSettings();
     effectiveSchedule = globalSettings.brightnessSchedule;
   }
 
-  // Prepare config for device, converting brightness schedule format
+  // Determine which theme schedule to use (global or device-specific)
+  // When useGlobalThemeSchedule is true, the user selected "Auto Light/Dark" theme
+  const useGlobalTheme = device.config.display.useGlobalThemeSchedule === true;
+  let effectiveThemeSchedule: ThemeScheduleConfig | DayNightConfig | undefined = device.config.display.dayNightMode;
+  if (useGlobalTheme) {
+    effectiveThemeSchedule = globalSettings.themeSchedule;
+  }
+
+  // Prepare config for device, converting schedule formats
+  // Force dayNightMode.enabled=true when device uses "Auto Light/Dark" theme
   return {
     ...device.config,
     display: {
       ...device.config.display,
-      brightnessSchedule: convertScheduleForDevice(effectiveSchedule)
+      brightnessSchedule: convertScheduleForDevice(effectiveSchedule),
+      dayNightMode: convertThemeScheduleForDevice(effectiveThemeSchedule, useGlobalTheme)
     }
   };
 }

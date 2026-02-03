@@ -61,6 +61,15 @@ export interface BrightnessScheduleConfig {
   displayTimeout: number;              // Seconds before returning to schedule (default: 30)
 }
 
+// Theme schedule configuration (auto day/night theme switching)
+export interface ThemeScheduleConfig {
+  enabled: boolean;
+  dayTheme: string;
+  nightTheme: string;
+  dayStartHour: number;    // 0-23
+  nightStartHour: number;  // 0-23
+}
+
 // Button configuration
 export interface ButtonConfig {
   id: number;
@@ -112,16 +121,18 @@ export interface GlobalScene {
 // Display configuration
 export interface DisplayConfig {
   brightness: number;
-  theme: 'light_mode' | 'neon_cyberpunk' | 'dark_clean' | 'lcars';
+  theme: 'light_mode' | 'neon_cyberpunk' | 'dark_mode' | 'lcars';
   dayNightMode: DayNightConfig;
   lcars: LCARSConfig;
   brightnessSchedule?: BrightnessScheduleConfig;
   useGlobalSchedule?: boolean;  // If true, use global brightness schedule instead of device-specific
+  useGlobalThemeSchedule?: boolean;  // If true, use global theme schedule instead of device-specific
 }
 
 // Global settings (server-wide configuration)
 export interface GlobalSettings {
   brightnessSchedule: BrightnessScheduleConfig;
+  themeSchedule: ThemeScheduleConfig;
   updatedAt: number;
 }
 
@@ -297,11 +308,11 @@ export function createDefaultConfig(deviceId: string, name: string, ip: string):
     },
     display: {
       brightness: 80,
-      theme: 'dark_clean',
+      theme: 'dark_mode',
       dayNightMode: {
         enabled: false,
         dayTheme: 'light_mode',
-        nightTheme: 'dark_clean',
+        nightTheme: 'dark_mode',
         dayStartHour: 7,
         nightStartHour: 20
       },
@@ -423,6 +434,13 @@ function createDefaultGlobalSettings(): GlobalSettings {
       touchBrightness: 30,
       displayTimeout: 30
     },
+    themeSchedule: {
+      enabled: false,
+      dayTheme: 'light_mode',
+      nightTheme: 'dark_mode',
+      dayStartHour: 7,
+      nightStartHour: 20
+    },
     updatedAt: Date.now()
   };
 }
@@ -485,6 +503,15 @@ export function getEffectiveBrightnessSchedule(device: Device): BrightnessSchedu
     return getGlobalSettings().brightnessSchedule;
   }
   return device.config?.display?.brightnessSchedule;
+}
+
+// Get effective theme schedule (day/night mode) for a device (respects useGlobalThemeSchedule flag)
+export function getEffectiveThemeSchedule(device: Device): ThemeScheduleConfig | DayNightConfig | undefined {
+  const useGlobal = device.config?.display?.useGlobalThemeSchedule;
+  if (useGlobal) {
+    return getGlobalSettings().themeSchedule;
+  }
+  return device.config?.display?.dayNightMode;
 }
 
 // Initialize

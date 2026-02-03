@@ -9,4 +9,13 @@
 |----|------|---|-------|------|
 | #473 | 11:05 PM | 🔵 | State Synchronization Service Architecture | ~408 |
 | #472 | " | 🔵 | Device Service Communication Patterns | ~426 |
+| #318 | 9:12 PM | 🔴 | Fixed speedLevel only sent for fan-type buttons in force push | ~326 |
+| #161 | 7:06 PM | 🔵 | Device management service with HTTP communication and health monitoring | ~462 |
+
+### Feb 3, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #840 | 2:01 PM | 🔴 | Force Enable Day/Night Mode When Auto Light/Dark Theme Selected | ~319 |
+| #823 | 1:48 PM | 🔵 | Device Service Handles Config Transformation and Sync Logic | ~363 |
 </claude-mem-context>

@@ -8,4 +8,13 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #477 | 11:06 PM | 🔵 | Device API Routes and Configuration Endpoints | ~427 |
+| #309 | 9:07 PM | ✅ | Import syncDevice function into devices routes | ~285 |
+
+### Feb 3, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #881 | 2:27 PM | ✅ | Device List API Expanded to Include Full Configuration | ~325 |
+| #875 | 2:21 PM | ✅ | Updated Server API Theme Validation to Accept "dark_mode" | ~271 |
+| #811 | 1:45 PM | 🔵 | Server-Based Device Management Architecture Identified | ~381 |
 </claude-mem-context>

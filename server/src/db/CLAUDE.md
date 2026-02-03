@@ -8,4 +8,12 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #471 | 11:05 PM | 🔵 | Server Database Schema and Storage Architecture | ~458 |
+| #163 | 7:06 PM | 🔵 | Database layer with file-based persistence for devices and configurations | ~484 |
+
+### Feb 3, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #876 | 2:21 PM | ✅ | TypeScript Type Definition Updated for Theme Name Change | ~240 |
+| #828 | 1:50 PM | 🔵 | TypeScript Database Schema Includes DayNightConfig Interface | ~393 |
 </claude-mem-context>

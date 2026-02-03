@@ -88,7 +88,7 @@ ThemeDefinition ThemeEngine::neonCyberpunkTheme = {
 // Modern dark theme with warm orange accents
 ThemeDefinition ThemeEngine::darkCleanTheme = {
     .id = ThemeId::DARK_CLEAN,
-    .name = "dark_clean",
+    .name = "dark_mode",
     .colors = {
         .background = lv_color_hex(0x121218),     // Very dark background
         .cardBackground = lv_color_hex(0x1e1e26), // Dark card background
@@ -248,7 +248,7 @@ const ThemeDefinition& ThemeEngine::getCurrentTheme() const {
 const ThemeDefinition* ThemeEngine::getThemeByName(const String& name) const {
     if (name == "light_mode") return &lightModeTheme;
     if (name == "neon_cyberpunk") return &neonCyberpunkTheme;
-    if (name == "dark_clean") return &darkCleanTheme;
+    if (name == "dark_mode") return &darkCleanTheme;
     if (name == "lcars") return &lcarsTheme;
     return nullptr;
 }

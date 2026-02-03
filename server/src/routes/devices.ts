@@ -34,7 +34,8 @@ router.get('/', (req: Request, res: Response) => {
     theme: d.config.display.theme,
     brightness: d.config.display.brightness,
     buttonCount: d.config.buttons.length,
-    sceneCount: d.config.scenes.length
+    sceneCount: d.config.scenes.length,
+    config: d.config
   })));
 });
 
@@ -256,7 +257,7 @@ router.post('/:id/theme', async (req: Request, res: Response) => {
   }
 
   const { theme } = req.body;
-  const validThemes = ['light_mode', 'neon_cyberpunk', 'dark_clean', 'lcars'];
+  const validThemes = ['light_mode', 'neon_cyberpunk', 'dark_mode', 'lcars'];
   if (!validThemes.includes(theme)) {
     return res.status(400).json({ error: `Theme must be one of: ${validThemes.join(', ')}` });
   }
