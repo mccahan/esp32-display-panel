@@ -500,13 +500,24 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
             card.iconIsImage = false;
         }
 
-        // Uppercase room name, centered
+        // Uppercase room name, centered - use smaller font for long names
         card.nameLabel = lv_label_create(card.card);
         String upperName = btnConfig.name;
         upperName.toUpperCase();
         lv_label_set_text(card.nameLabel, upperName.c_str());
-        lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_16, 0);
+        // Choose font size based on name length
+        size_t nameLen = btnConfig.name.length();
+        if (nameLen > 16) {
+            lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_12, 0);
+        } else if (nameLen > 12) {
+            lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_14, 0);
+        } else {
+            lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_16, 0);
+        }
         themeEngine.styleLabel(card.nameLabel, true);
+        lv_obj_set_width(card.nameLabel, cardWidth - 20);  // Limit width with padding
+        lv_label_set_long_mode(card.nameLabel, LV_LABEL_LONG_DOT);  // Add ... if still too long
+        lv_obj_set_style_text_align(card.nameLabel, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_align(card.nameLabel, LV_ALIGN_CENTER, 0, 10);
 
         // Status text: [ONLINE] / [OFFLINE] - scene buttons don't show status
@@ -568,11 +579,21 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
             lv_obj_add_event_cb(card.toggle, onToggleChanged, LV_EVENT_VALUE_CHANGED, (void*)(intptr_t)index);
         }
 
-        // Room name label
+        // Room name label - use smaller font for long names
         card.nameLabel = lv_label_create(card.card);
         lv_label_set_text(card.nameLabel, btnConfig.name.c_str());
-        lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_16, 0);
+        // Choose font size based on name length
+        size_t nameLen = btnConfig.name.length();
+        if (nameLen > 16) {
+            lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_12, 0);
+        } else if (nameLen > 12) {
+            lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_14, 0);
+        } else {
+            lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_16, 0);
+        }
         themeEngine.styleLabel(card.nameLabel, true);
+        lv_obj_set_width(card.nameLabel, cardWidth - 36);  // Limit width with padding
+        lv_label_set_long_mode(card.nameLabel, LV_LABEL_LONG_DOT);  // Add ... if still too long
         lv_obj_align(card.nameLabel, LV_ALIGN_BOTTOM_LEFT, 18, -18);
 
         // Status text (for themes that show it)

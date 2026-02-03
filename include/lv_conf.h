@@ -33,6 +33,7 @@
 #define LV_USE_THEME_BASIC 1
 
 /* Fonts - enable commonly used sizes */
+#define LV_FONT_MONTSERRAT_12 1
 #define LV_FONT_MONTSERRAT_14 1
 #define LV_FONT_MONTSERRAT_16 1
 #define LV_FONT_MONTSERRAT_20 1
