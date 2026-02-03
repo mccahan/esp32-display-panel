@@ -1618,9 +1618,30 @@
       }
     }
 
-    // Brightness slider
+    // Brightness slider - apply immediately with debouncing
+    let brightnessDebounceTimer = null;
     document.getElementById('device-brightness').addEventListener('input', (e) => {
-      document.getElementById('brightness-value').textContent = e.target.value + '%';
+      const value = parseInt(e.target.value);
+      document.getElementById('brightness-value').textContent = value + '%';
+
+      // Debounce the API call (wait 150ms after user stops moving slider)
+      if (brightnessDebounceTimer) {
+        clearTimeout(brightnessDebounceTimer);
+      }
+      brightnessDebounceTimer = setTimeout(async () => {
+        if (!selectedDevice) return;
+        try {
+          await fetch(`/api/devices/${selectedDevice.id}/brightness`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ brightness: value })
+          });
+          // Update local state
+          selectedDevice.config.display.brightness = value;
+        } catch (error) {
+          console.error('Failed to set brightness:', error);
+        }
+      }, 150);
     });
 
     // Save device config

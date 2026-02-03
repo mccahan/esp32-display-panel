@@ -23,6 +23,7 @@ struct UIButtonCard {
     uint8_t speedLevel;    // Current speed level
     bool isSceneButton;    // True if this is a scene-type button
     String sceneId;        // Scene ID for scene-type buttons
+    bool iconIsImage;      // True if icon is lv_img, false if lv_label
 };
 
 // Fan speed overlay state

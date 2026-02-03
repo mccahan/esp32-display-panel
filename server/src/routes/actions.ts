@@ -150,7 +150,14 @@ async function handleButtonAction(
 
       // Push updated state to the ESP32 panel
       if (device.ip && device.online) {
-        const buttonUpdate = { id: buttonId, state: button.state, speedLevel: button.speedLevel };
+        const buttonUpdate: { id: number; state: boolean; speedLevel?: number } = {
+          id: buttonId,
+          state: button.state
+        };
+        // Only include speedLevel for fan-type buttons
+        if (button.type === 'fan') {
+          buttonUpdate.speedLevel = button.speedLevel;
+        }
         pushButtonStatesToDevice(device, [buttonUpdate]).catch(err => {
           console.error(`[Action] Failed to push state to device ${device.name}:`, err);
         });
@@ -172,7 +179,14 @@ async function handleButtonAction(
 
   // Push updated state to the ESP32 panel
   if (device.ip && device.online) {
-    const buttonUpdate = { id: buttonId, state: button.state, speedLevel: button.speedLevel };
+    const buttonUpdate: { id: number; state: boolean; speedLevel?: number } = {
+      id: buttonId,
+      state: button.state
+    };
+    // Only include speedLevel for fan-type buttons
+    if (button.type === 'fan') {
+      buttonUpdate.speedLevel = button.speedLevel;
+    }
     pushButtonStatesToDevice(device, [buttonUpdate]).catch(err => {
       console.error(`[Action] Failed to push state to device ${device.name}:`, err);
     });

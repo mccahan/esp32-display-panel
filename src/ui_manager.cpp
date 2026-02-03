@@ -465,6 +465,7 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
             lv_obj_set_style_img_recolor(card.icon, themeEngine.getIconColor(card.currentState, index), 0);
             lv_obj_set_style_img_recolor_opa(card.icon, LV_OPA_COVER, 0);
             lv_obj_align(card.icon, LV_ALIGN_TOP_MID, 0, 15);
+            card.iconIsImage = true;
         } else if (isImageIcon(btnConfig.icon)) {
             // Use custom image icon
             card.icon = lv_img_create(card.card);
@@ -473,6 +474,7 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
             lv_obj_set_style_img_recolor(card.icon, iconColor, 0);
             lv_obj_set_style_img_recolor_opa(card.icon, LV_OPA_COVER, 0);
             lv_obj_align(card.icon, LV_ALIGN_TOP_MID, 0, 15);
+            card.iconIsImage = true;
         } else {
             // Use text symbol
             card.icon = lv_label_create(card.card);
@@ -482,6 +484,7 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
             lv_color_t iconColor = (btnConfig.type == ButtonType::SCENE) ? cardNeonColor : themeEngine.getIconColor(card.currentState, index);
             lv_obj_set_style_text_color(card.icon, iconColor, 0);
             lv_obj_align(card.icon, LV_ALIGN_TOP_MID, 0, 15);
+            card.iconIsImage = false;
         }
 
         // Uppercase room name, centered
@@ -515,6 +518,7 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
             lv_obj_set_style_img_recolor(card.icon, themeEngine.getIconColor(card.currentState, index), 0);
             lv_obj_set_style_img_recolor_opa(card.icon, LV_OPA_COVER, 0);
             lv_obj_align(card.icon, LV_ALIGN_TOP_LEFT, 18, 18);
+            card.iconIsImage = true;
         } else if (isImageIcon(btnConfig.icon)) {
             // Use custom image icon
             card.icon = lv_img_create(card.card);
@@ -522,6 +526,7 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
             lv_obj_set_style_img_recolor(card.icon, themeEngine.getIconColor(card.currentState, index), 0);
             lv_obj_set_style_img_recolor_opa(card.icon, LV_OPA_COVER, 0);
             lv_obj_align(card.icon, LV_ALIGN_TOP_LEFT, 18, 18);
+            card.iconIsImage = true;
         } else {
             // Use text symbol
             card.icon = lv_label_create(card.card);
@@ -530,6 +535,7 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
             lv_obj_set_style_text_font(card.icon, &lv_font_montserrat_28, 0);
             lv_obj_set_style_text_color(card.icon, themeEngine.getIconColor(card.currentState, index), 0);
             lv_obj_align(card.icon, LV_ALIGN_TOP_LEFT, 18, 18);
+            card.iconIsImage = false;
         }
 
         // Toggle switch (not for scene buttons)
@@ -1457,6 +1463,7 @@ void UIManager::createLCARSCard(int index, const ButtonConfig& btnConfig, int x,
         lv_obj_set_style_img_recolor(card.icon, card.currentState ? lv_color_white() : lcarsYellow, 0);
         lv_obj_set_style_img_recolor_opa(card.icon, LV_OPA_COVER, 0);
         lv_obj_align(card.icon, LV_ALIGN_LEFT_MID, iconOffset, 0);
+        card.iconIsImage = true;
     } else if (isImageIcon(btnConfig.icon)) {
         // Use custom image icon
         card.icon = lv_img_create(card.card);
@@ -1464,6 +1471,7 @@ void UIManager::createLCARSCard(int index, const ButtonConfig& btnConfig, int x,
         lv_obj_set_style_img_recolor(card.icon, card.currentState ? lv_color_white() : lcarsYellow, 0);
         lv_obj_set_style_img_recolor_opa(card.icon, LV_OPA_COVER, 0);
         lv_obj_align(card.icon, LV_ALIGN_LEFT_MID, iconOffset, 0);
+        card.iconIsImage = true;
     } else {
         card.icon = lv_label_create(card.card);
         const char* iconSymbol = getIconSymbol(btnConfig.icon);
@@ -1471,6 +1479,7 @@ void UIManager::createLCARSCard(int index, const ButtonConfig& btnConfig, int x,
         lv_obj_set_style_text_font(card.icon, iconFont, 0);
         lv_obj_set_style_text_color(card.icon, card.currentState ? lv_color_white() : lcarsYellow, 0);
         lv_obj_align(card.icon, LV_ALIGN_LEFT_MID, iconOffset, 0);
+        card.iconIsImage = false;
     }
 
     // Room name - on right side
@@ -1539,8 +1548,8 @@ void UIManager::updateCardVisual(UIButtonCard& card) {
         lv_color_t lcarsYellow = lv_color_hex(0xffcc66);
 
         lv_obj_set_style_bg_color(card.card, card.currentState ? lcarsPurpleActive : lcarsPurpleStandby, 0);
-        // Update icon color - use img_recolor for fans (speedSteps > 0)
-        if (card.speedSteps > 0) {
+        // Update icon color - use img_recolor for images, text_color for labels
+        if (card.iconIsImage) {
             lv_obj_set_style_img_recolor(card.icon, card.currentState ? lv_color_white() : lcarsYellow, 0);
         } else {
             lv_obj_set_style_text_color(card.icon, card.currentState ? lv_color_white() : lcarsYellow, 0);
@@ -1564,8 +1573,8 @@ void UIManager::updateCardVisual(UIButtonCard& card) {
     } else {
         // Standard theme update
         themeEngine.styleCard(card.card, card.currentState, index);
-        // Update icon color - use img_recolor for fans (speedSteps > 0)
-        if (card.speedSteps > 0) {
+        // Update icon color - use img_recolor for images, text_color for labels
+        if (card.iconIsImage) {
             lv_obj_set_style_img_recolor(card.icon, themeEngine.getIconColor(card.currentState, index), 0);
         } else {
             lv_obj_set_style_text_color(card.icon, themeEngine.getIconColor(card.currentState, index), 0);
