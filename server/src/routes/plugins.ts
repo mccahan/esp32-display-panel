@@ -15,8 +15,8 @@ router.get('/:id/ui', (req: Request, res: Response) => {
     return res.status(404).json({ error: 'Plugin not found' });
   }
 
-  // Look for UI file in plugin directory
-  const uiPath = path.join(__dirname, '../plugins', pluginId, 'ui', 'config.html');
+  // Look for UI file in plugin directory (in src/, not dist/)
+  const uiPath = path.join(__dirname, '../../src/plugins', pluginId, 'ui', 'config.html');
 
   if (!fs.existsSync(uiPath)) {
     // No custom UI - return empty
