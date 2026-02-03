@@ -1,0 +1,93 @@
+{
+  "esp32-207cc4": {
+    "id": "esp32-207cc4",
+    "mac": "DC:B4:D9:20:7C:C4",
+    "ip": "10.0.1.44",
+    "name": "Living Room Panel",
+    "location": "Living Room",
+    "config": {
+      "version": 1,
+      "device": {
+        "id": "esp32-207cc4",
+        "name": "Living Room Panel",
+        "location": "Living Room"
+      },
+      "display": {
+        "brightness": 100,
+        "theme": "dark_clean",
+        "dayNightMode": {
+          "enabled": false,
+          "dayTheme": "light_mode",
+          "nightTheme": "dark_clean",
+          "dayStartHour": 7,
+          "nightStartHour": 20
+        },
+        "lcars": {
+          "enabled": false,
+          "colorScheme": "federation",
+          "headerLeft": "STARDATE",
+          "headerRight": "ONLINE",
+          "footerLeft": "",
+          "footerRight": "",
+          "sidebarTop": "",
+          "sidebarBottom": "",
+          "customFields": []
+        }
+      },
+      "buttons": [
+        {
+          "id": 1,
+          "type": "fan",
+          "name": "Kitchen",
+          "icon": "fan",
+          "state": false,
+          "speedSteps": 3,
+          "speedLevel": 0
+        },
+        {
+          "id": 2,
+          "type": "light",
+          "name": "Bathroom",
+          "icon": "charge",
+          "state": false
+        },
+        {
+          "id": 3,
+          "type": "light",
+          "name": "Button 3",
+          "icon": "charge",
+          "state": false
+        },
+        {
+          "id": 4,
+          "type": "light",
+          "name": "Button 4",
+          "icon": "charge",
+          "state": false
+        }
+      ],
+      "scenes": [
+        {
+          "id": 1,
+          "name": "All Off",
+          "icon": "power"
+        },
+        {
+          "id": 2,
+          "name": "All On",
+          "icon": "charge"
+        }
+      ],
+      "server": {
+        "host": "10.0.1.250",
+        "port": 3000
+      },
+      "theme": "dark_clean",
+      "buttonCount": 4,
+      "sceneCount": 2
+    },
+    "lastSeen": 1770055248872,
+    "online": false,
+    "adopted": true
+  }
+}

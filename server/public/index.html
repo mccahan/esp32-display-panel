@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Display Manager</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-bottom: 2px solid #00d4ff;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    header h1 { color: #00d4ff; font-size: 1.5em; }
+    header p { color: #888; font-size: 0.9em; margin-top: 5px; }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 12px 24px;
+      background: #1a1a2e;
+      border: 1px solid #2a2a4a;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #888;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .tab:hover { border-color: #00d4ff; color: #fff; }
+    .tab.active { background: #00d4ff; color: #0f0f1a; border-color: #00d4ff; }
+
+    .main-layout {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .main-layout { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: #1a1a2e;
+      border: 1px solid #2a2a4a;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card h2 { color: #00d4ff; margin-bottom: 15px; font-size: 1.1em; display: flex; align-items: center; gap: 10px; }
+    .card h3 { color: #888; margin-bottom: 10px; font-size: 0.95em; display: flex; align-items: center; justify-content: space-between; }
+
+    .section { margin-bottom: 25px; }
+    .section:last-child { margin-bottom: 0; }
+    .section-title {
+      color: #00d4ff;
+      font-size: 0.85em;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #2a2a4a;
+    }
+
+    .device-list { display: flex; flex-direction: column; gap: 10px; }
+    .device-card {
+      background: #16213e;
+      border: 2px solid #2a2a4a;
+      border-radius: 12px;
+      padding: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .device-card:hover { border-color: #00d4ff; transform: translateX(5px); }
+    .device-card.selected { border-color: #00d4ff; background: #1a2744; box-shadow: 0 0 20px rgba(0, 212, 255, 0.15); }
+
+    .device-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .device-name { font-weight: 600; font-size: 1.05em; }
+    .device-status {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75em;
+      font-weight: 500;
+    }
+    .device-status.online { background: #0f5132; color: #75b798; }
+    .device-status.offline { background: #5c1a1a; color: #ea868f; }
+
+    .device-info { color: #888; font-size: 0.85em; }
+    .device-info span { margin-right: 15px; }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9em;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #00d4ff; color: #0f0f1a; }
+    .btn-primary:hover { background: #00b8e6; }
+    .btn-secondary { background: #2a2a4a; color: #e0e0e0; }
+    .btn-secondary:hover { background: #3a3a5a; }
+    .btn-success { background: #198754; color: #fff; }
+    .btn-success:hover { background: #157347; }
+    .btn-danger { background: #e94560; color: #fff; }
+    .btn-danger:hover { background: #d13550; }
+    .btn-sm { padding: 6px 12px; font-size: 0.8em; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; color: #888; margin-bottom: 5px; font-size: 0.9em; }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #2a2a4a;
+      border-radius: 8px;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      font-size: 1em;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: #00d4ff;
+      box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+    }
+
+    .button-list { display: flex; flex-direction: column; gap: 8px; }
+    .button-item {
+      display: grid;
+      grid-template-columns: 50px 1fr 80px 80px 36px;
+      gap: 8px;
+      align-items: center;
+      padding: 12px;
+      background: #0f0f1a;
+      border-radius: 8px;
+      border: 1px solid #2a2a4a;
+    }
+    .button-status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      font-size: 0.75em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .button-status.on {
+      background: linear-gradient(135deg, #ff9f0a 0%, #ff6b00 100%);
+      color: #000;
+    }
+    .button-status.off {
+      background: #2a2a4a;
+      color: #666;
+    }
+    .button-status.fan-on {
+      background: linear-gradient(135deg, #32d74b 0%, #28a745 100%);
+      color: #000;
+    }
+    .button-status:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 10px rgba(255, 159, 10, 0.3);
+    }
+    .button-item input, .button-item select {
+      padding: 8px 10px;
+      border: 1px solid #2a2a4a;
+      border-radius: 6px;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      font-size: 0.9em;
+    }
+    .button-item input:focus, .button-item select:focus {
+      outline: none;
+      border-color: #00d4ff;
+    }
+    .button-item .btn-danger {
+      padding: 8px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .screenshot-container {
+      text-align: center;
+      padding: 15px;
+      background: #0f0f1a;
+      border-radius: 8px;
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .screenshot-container img {
+      max-width: 100%;
+      max-height: 350px;
+      border-radius: 8px;
+      border: 2px solid #2a2a4a;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .slider-container input[type="range"] {
+      flex: 1;
+      height: 8px;
+      -webkit-appearance: none;
+      background: linear-gradient(to right, #2a2a4a 0%, #00d4ff 100%);
+      border-radius: 4px;
+    }
+    .slider-container input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      background: #00d4ff;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0, 212, 255, 0.4);
+    }
+    .slider-value {
+      min-width: 50px;
+      text-align: center;
+      color: #00d4ff;
+      font-weight: 600;
+      background: #0f0f1a;
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+      padding-top: 15px;
+      border-top: 1px solid #2a2a4a;
+    }
+    .actions-right { margin-left: auto; }
+
+    .hidden { display: none !important; }
+
+    .discover-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: #16213e;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #2a2a4a;
+    }
+    .discover-info { flex: 1; }
+    .discover-info .name { font-weight: 600; }
+    .discover-info .details { color: #888; font-size: 0.85em; margin-top: 4px; }
+
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: #1a1a2e;
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      border: 1px solid #2a2a4a;
+    }
+    .modal-content h2 { margin-bottom: 20px; color: #00d4ff; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 15px 25px;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: 500;
+      z-index: 2000;
+      animation: slideIn 0.3s ease;
+    }
+    .toast.success { background: #198754; }
+    .toast.error { background: #dc3545; }
+    .toast.info { background: #0dcaf0; color: #000; }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 26px;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #2a2a4a;
+      border-radius: 26px;
+      transition: 0.3s;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+    input:checked + .toggle-slider { background: #00d4ff; }
+    input:checked + .toggle-slider:before { transform: translateX(24px); }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .info-item {
+      background: #0f0f1a;
+      padding: 10px 12px;
+      border-radius: 6px;
+    }
+    .info-item label {
+      display: block;
+      font-size: 0.75em;
+      color: #666;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .info-item span { font-weight: 500; }
+
+    .screenshot-actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>ESP32 Display Manager</h1>
+      <p>Configure and manage your smart display panels</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="tabs">
+      <div class="tab active" data-tab="devices">Devices</div>
+      <div class="tab" data-tab="discover">Discover</div>
+    </div>
+
+    <!-- Devices Tab -->
+    <div id="tab-devices">
+      <div class="main-layout">
+        <!-- Device List Sidebar -->
+        <div class="device-sidebar">
+          <div class="card">
+            <h2>My Devices</h2>
+            <div class="device-list" id="device-list">
+              <div class="empty-state">Loading devices...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Device Detail Panel -->
+        <div id="device-detail" class="hidden">
+          <div class="card">
+            <div class="section">
+              <div class="section-title">Device Settings</div>
+              <div class="form-group">
+                <label>Device Name</label>
+                <input type="text" id="device-name" placeholder="Enter device name">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Theme</label>
+                  <select id="device-theme">
+                    <option value="dark_clean">Dark Clean</option>
+                    <option value="light_mode">Light Mode</option>
+                    <option value="neon_cyberpunk">Neon Cyberpunk</option>
+                    <option value="lcars">LCARS (Star Trek)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Brightness</label>
+                  <div class="slider-container">
+                    <input type="range" id="device-brightness" min="10" max="100" value="80">
+                    <span class="slider-value" id="brightness-value">80%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">
+                Buttons
+                <button class="btn btn-sm btn-secondary" onclick="addButton()">+ Add Button</button>
+              </div>
+              <div class="button-list" id="button-list"></div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">
+                Scene Buttons
+                <label class="toggle-switch">
+                  <input type="checkbox" id="scenes-enabled" onchange="toggleScenes(this.checked)">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="button-list" id="scene-list"></div>
+            </div>
+
+            <div class="actions">
+              <button class="btn btn-success" onclick="saveDeviceConfig()">Save & Push to Device</button>
+              <div class="actions-right">
+                <button class="btn btn-danger" onclick="deleteDevice()">Remove Device</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="section-title">Live Preview</div>
+            <div class="info-grid" id="device-info"></div>
+            <div class="screenshot-actions">
+              <button class="btn btn-sm btn-secondary" onclick="captureScreenshot()">Capture New</button>
+              <button class="btn btn-sm btn-secondary" onclick="refreshScreenshot()">Refresh</button>
+            </div>
+            <div class="screenshot-container">
+              <img id="device-screenshot" src="" alt="Device screenshot" style="display: none;">
+              <div id="no-screenshot">Select a device to view screenshot</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="no-device-selected" class="card">
+          <div class="empty-state">
+            <p style="font-size: 1.2em; margin-bottom: 10px;">Select a device</p>
+            <p>Choose a device from the list to configure it, or go to the Discover tab to add new devices.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Discover Tab -->
+    <div id="tab-discover" class="hidden">
+      <div class="card">
+        <h2>Discover New Devices</h2>
+        <p style="color: #888; margin-bottom: 15px;">
+          ESP32 display devices advertising via mDNS will appear here. Click "Adopt" to add them to your system.
+        </p>
+        <button class="btn btn-primary" onclick="scanDevices()">Scan Network</button>
+        <div id="discovered-list" style="margin-top: 20px;">
+          <div class="empty-state">Click "Scan Network" to search for devices</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Adopt Modal -->
+  <div id="adopt-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Adopt Device</h2>
+      <div class="form-group">
+        <label>Device Name</label>
+        <input type="text" id="adopt-name" placeholder="e.g., Living Room Panel">
+      </div>
+      <div class="form-group">
+        <label>Location</label>
+        <input type="text" id="adopt-location" placeholder="e.g., Living Room">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeAdoptModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmAdopt()">Adopt Device</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let devices = [];
+    let selectedDevice = null;
+    let adoptingDeviceId = null;
+
+    // Toast notifications
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        document.getElementById('tab-devices').classList.toggle('hidden', tab.dataset.tab !== 'devices');
+        document.getElementById('tab-discover').classList.toggle('hidden', tab.dataset.tab !== 'discover');
+
+        if (tab.dataset.tab === 'discover') {
+          loadDiscoveredDevices();
+        }
+      });
+    });
+
+    // Load devices
+    async function loadDevices() {
+      try {
+        const response = await fetch('/api/devices');
+        devices = await response.json();
+        renderDevices();
+      } catch (error) {
+        console.error('Failed to load devices:', error);
+      }
+    }
+
+    function renderDevices() {
+      const list = document.getElementById('device-list');
+
+      if (devices.length === 0) {
+        list.innerHTML = '<div class="empty-state">No devices yet.<br>Go to Discover tab to add devices.</div>';
+        return;
+      }
+
+      list.innerHTML = devices.map(d => `
+        <div class="device-card ${selectedDevice?.id === d.id ? 'selected' : ''}" onclick="selectDevice('${d.id}')">
+          <div class="device-header">
+            <span class="device-name">${d.name}</span>
+            <span class="device-status ${d.online ? 'online' : 'offline'}">${d.online ? 'Online' : 'Offline'}</span>
+          </div>
+          <div class="device-info">
+            <span>${d.location || 'No location'}</span>
+            <span>${d.theme}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function selectDevice(id) {
+      try {
+        const response = await fetch(`/api/devices/${id}`);
+        selectedDevice = await response.json();
+
+        document.getElementById('device-detail').classList.remove('hidden');
+        document.getElementById('no-device-selected').classList.add('hidden');
+
+        document.getElementById('device-name').value = selectedDevice.name;
+        document.getElementById('device-theme').value = selectedDevice.config.display.theme;
+        document.getElementById('device-brightness').value = selectedDevice.config.display.brightness;
+        document.getElementById('brightness-value').textContent = selectedDevice.config.display.brightness + '%';
+
+        // Device info
+        document.getElementById('device-info').innerHTML = `
+          <div class="info-item"><label>IP Address</label><span>${selectedDevice.ip}</span></div>
+          <div class="info-item"><label>Buttons</label><span>${selectedDevice.config.buttons.length}</span></div>
+          <div class="info-item"><label>Scenes</label><span>${selectedDevice.config.scenes?.length || 0}</span></div>
+          <div class="info-item"><label>Theme</label><span>${selectedDevice.config.display.theme}</span></div>
+        `;
+
+        renderButtonList();
+        renderSceneList();
+        renderDevices();
+        refreshScreenshot();
+      } catch (error) {
+        console.error('Failed to load device:', error);
+        showToast('Failed to load device', 'error');
+      }
+    }
+
+    function updateButtonName(index, name) {
+      if (selectedDevice) {
+        selectedDevice.config.buttons[index].name = name;
+      }
+    }
+
+    function updateButtonType(index, type) {
+      if (selectedDevice) {
+        selectedDevice.config.buttons[index].type = type;
+      }
+    }
+
+    function updateButtonIcon(index, icon) {
+      if (selectedDevice) {
+        selectedDevice.config.buttons[index].icon = icon;
+      }
+    }
+
+    function addButton() {
+      if (!selectedDevice) return;
+      if (selectedDevice.config.buttons.length >= 6) {
+        showToast('Maximum 6 buttons allowed', 'error');
+        return;
+      }
+
+      const newId = selectedDevice.config.buttons.length + 1;
+      selectedDevice.config.buttons.push({
+        id: newId,
+        type: 'light',
+        name: `Button ${newId}`,
+        icon: 'charge',
+        state: false,
+        speedSteps: 0,
+        speedLevel: 0
+      });
+      renderButtonList();
+    }
+
+    function removeButton(index) {
+      if (!selectedDevice) return;
+      if (selectedDevice.config.buttons.length <= 2) {
+        showToast('Minimum 2 buttons required', 'error');
+        return;
+      }
+
+      selectedDevice.config.buttons.splice(index, 1);
+      selectedDevice.config.buttons.forEach((btn, i) => btn.id = i + 1);
+      renderButtonList();
+    }
+
+    function getStatusText(btn) {
+      if (btn.type === 'fan' && btn.speedSteps > 0 && btn.state) {
+        const level = btn.speedLevel || 0;
+        if (btn.speedSteps === 3) {
+          return ['Off', 'Lo', 'Med', 'Hi'][level] || 'On';
+        }
+        return level > 0 ? `S${level}` : 'Off';
+      }
+      return btn.state ? 'On' : 'Off';
+    }
+
+    function getStatusClass(btn) {
+      if (!btn.state) return 'off';
+      if (btn.type === 'fan') return 'fan-on';
+      return 'on';
+    }
+
+    function toggleButtonState(index) {
+      if (!selectedDevice) return;
+      const btn = selectedDevice.config.buttons[index];
+      btn.state = !btn.state;
+      if (!btn.state && btn.type === 'fan') {
+        btn.speedLevel = 0;
+      } else if (btn.state && btn.type === 'fan' && btn.speedSteps > 0) {
+        btn.speedLevel = 1;  // Default to low when turning on
+      }
+      renderButtonList();
+    }
+
+    function renderButtonList() {
+      if (!selectedDevice) return;
+      const buttonList = document.getElementById('button-list');
+      buttonList.innerHTML = selectedDevice.config.buttons.map((btn, i) => `
+        <div class="button-item" style="grid-template-columns: 50px 1fr 80px 80px ${btn.type === 'fan' ? '70px' : ''} 36px;">
+          <div class="button-status ${getStatusClass(btn)}" onclick="toggleButtonState(${i})" title="Click to toggle">
+            ${getStatusText(btn)}
+          </div>
+          <input type="text" value="${btn.name}" onchange="updateButtonName(${i}, this.value)" placeholder="Button name">
+          <select onchange="updateButtonType(${i}, this.value); renderButtonList();">
+            <option value="light" ${btn.type === 'light' ? 'selected' : ''}>Light</option>
+            <option value="switch" ${btn.type === 'switch' ? 'selected' : ''}>Switch</option>
+            <option value="fan" ${btn.type === 'fan' ? 'selected' : ''}>Fan</option>
+          </select>
+          <select onchange="updateButtonIcon(${i}, this.value)">
+            <option value="charge" ${btn.icon === 'charge' || btn.icon === 'light' ? 'selected' : ''}>Light</option>
+            <option value="fan" ${btn.icon === 'fan' ? 'selected' : ''}>Fan</option>
+            <option value="power" ${btn.icon === 'power' ? 'selected' : ''}>Power</option>
+            <option value="home" ${btn.icon === 'home' ? 'selected' : ''}>Home</option>
+            <option value="settings" ${btn.icon === 'settings' ? 'selected' : ''}>Gear</option>
+          </select>
+          ${btn.type === 'fan' ? `
+          <select onchange="updateFanSpeedSteps(${i}, parseInt(this.value))" title="Speed Steps">
+            <option value="0" ${(btn.speedSteps || 0) === 0 ? 'selected' : ''}>On/Off</option>
+            <option value="3" ${(btn.speedSteps || 0) === 3 ? 'selected' : ''}>3 Speed</option>
+            <option value="4" ${(btn.speedSteps || 0) === 4 ? 'selected' : ''}>4 Speed</option>
+            <option value="5" ${(btn.speedSteps || 0) === 5 ? 'selected' : ''}>5 Speed</option>
+          </select>
+          ` : ''}
+          <button class="btn btn-sm btn-danger" onclick="removeButton(${i})" ${selectedDevice.config.buttons.length <= 2 ? 'disabled' : ''}>×</button>
+        </div>
+      `).join('');
+    }
+
+    function updateFanSpeedSteps(index, steps) {
+      if (selectedDevice && selectedDevice.config.buttons[index]) {
+        selectedDevice.config.buttons[index].speedSteps = steps;
+        selectedDevice.config.buttons[index].speedLevel = 0;
+      }
+    }
+
+    function toggleScenes(enabled) {
+      if (!selectedDevice) return;
+      if (enabled) {
+        if (!selectedDevice.config.scenes || selectedDevice.config.scenes.length === 0) {
+          selectedDevice.config.scenes = [
+            { id: 1, name: 'All Off', icon: 'power' },
+            { id: 2, name: 'All On', icon: 'charge' }
+          ];
+        }
+      } else {
+        selectedDevice.config.scenes = [];
+      }
+      renderSceneList();
+    }
+
+    function renderSceneList() {
+      if (!selectedDevice) return;
+      const sceneList = document.getElementById('scene-list');
+      const scenesEnabled = document.getElementById('scenes-enabled');
+
+      const hasScenes = selectedDevice.config.scenes && selectedDevice.config.scenes.length > 0;
+      scenesEnabled.checked = hasScenes;
+
+      if (!hasScenes) {
+        sceneList.innerHTML = '<div class="empty-state" style="padding: 15px; color: #666;">Toggle switch to enable scene buttons</div>';
+        return;
+      }
+
+      sceneList.innerHTML = selectedDevice.config.scenes.map((scene, i) => `
+        <div class="button-item" style="grid-template-columns: 1fr 100px 36px;">
+          <input type="text" value="${scene.name}" onchange="updateSceneName(${i}, this.value)" placeholder="Scene name">
+          <select onchange="updateSceneIcon(${i}, this.value)">
+            <option value="power" ${scene.icon === 'power' ? 'selected' : ''}>Power</option>
+            <option value="charge" ${scene.icon === 'charge' ? 'selected' : ''}>Light</option>
+            <option value="home" ${scene.icon === 'home' ? 'selected' : ''}>Home</option>
+          </select>
+          <div></div>
+        </div>
+      `).join('');
+    }
+
+    function updateSceneName(index, name) {
+      if (selectedDevice && selectedDevice.config.scenes) {
+        selectedDevice.config.scenes[index].name = name;
+      }
+    }
+
+    function updateSceneIcon(index, icon) {
+      if (selectedDevice && selectedDevice.config.scenes) {
+        selectedDevice.config.scenes[index].icon = icon;
+      }
+    }
+
+    // Brightness slider
+    document.getElementById('device-brightness').addEventListener('input', (e) => {
+      document.getElementById('brightness-value').textContent = e.target.value + '%';
+    });
+
+    // Save device config
+    async function saveDeviceConfig() {
+      if (!selectedDevice) return;
+
+      const name = document.getElementById('device-name').value;
+      const theme = document.getElementById('device-theme').value;
+      const brightness = parseInt(document.getElementById('device-brightness').value);
+
+      selectedDevice.name = name;
+      selectedDevice.config.display.theme = theme;
+      selectedDevice.config.display.brightness = brightness;
+
+      showToast('Saving configuration...', 'info');
+
+      try {
+        await fetch(`/api/devices/${selectedDevice.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(selectedDevice.config)
+        });
+
+        await fetch(`/api/devices/${selectedDevice.id}/config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+
+        showToast('Configuration saved!', 'success');
+
+        setTimeout(async () => {
+          try {
+            await fetch(`/api/devices/${selectedDevice.id}/screenshot/capture`, { method: 'POST' });
+            setTimeout(() => {
+              refreshScreenshot();
+              loadDevices();
+            }, 1500);
+          } catch (e) {
+            console.error('Failed to capture screenshot:', e);
+          }
+        }, 2500);
+
+      } catch (error) {
+        showToast('Failed to save configuration', 'error');
+        console.error(error);
+      }
+    }
+
+    async function captureScreenshot() {
+      if (!selectedDevice) return;
+      showToast('Capturing screenshot...', 'info');
+
+      try {
+        await fetch(`/api/devices/${selectedDevice.id}/screenshot/capture`, { method: 'POST' });
+        setTimeout(refreshScreenshot, 1000);
+      } catch (error) {
+        console.error('Failed to capture screenshot:', error);
+        showToast('Failed to capture screenshot', 'error');
+      }
+    }
+
+    function refreshScreenshot() {
+      if (!selectedDevice) return;
+
+      const img = document.getElementById('device-screenshot');
+      const noScreenshot = document.getElementById('no-screenshot');
+
+      img.src = `/api/devices/${selectedDevice.id}/screenshot?t=${Date.now()}`;
+      img.onload = () => {
+        img.style.display = 'block';
+        noScreenshot.style.display = 'none';
+      };
+      img.onerror = () => {
+        img.style.display = 'none';
+        noScreenshot.style.display = 'block';
+        noScreenshot.textContent = 'No screenshot available';
+      };
+    }
+
+    async function deleteDevice() {
+      if (!selectedDevice) return;
+      if (!confirm(`Remove "${selectedDevice.name}" from the system?`)) return;
+
+      try {
+        await fetch(`/api/devices/${selectedDevice.id}`, { method: 'DELETE' });
+        selectedDevice = null;
+        document.getElementById('device-detail').classList.add('hidden');
+        document.getElementById('no-device-selected').classList.remove('hidden');
+        loadDevices();
+        showToast('Device removed', 'success');
+      } catch (error) {
+        console.error('Failed to delete device:', error);
+        showToast('Failed to remove device', 'error');
+      }
+    }
+
+    // Discovery
+    async function loadDiscoveredDevices() {
+      const list = document.getElementById('discovered-list');
+      list.innerHTML = '<div class="empty-state">Scanning...</div>';
+
+      try {
+        const response = await fetch('/api/discovery/devices');
+        const discovered = await response.json();
+
+        if (discovered.length === 0) {
+          list.innerHTML = '<div class="empty-state">No new devices found.<br>Make sure your ESP32 devices are powered on and connected to WiFi.</div>';
+          return;
+        }
+
+        list.innerHTML = discovered.filter(d => !d.adopted).map(d => `
+          <div class="discover-item">
+            <div class="discover-info">
+              <div class="name">${d.name}</div>
+              <div class="details">IP: ${d.ip} | MAC: ${d.mac}</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="showAdoptModal('${d.id}', '${d.name}')">Adopt</button>
+          </div>
+        `).join('');
+
+        if (list.innerHTML === '') {
+          list.innerHTML = '<div class="empty-state">All discovered devices have been adopted.</div>';
+        }
+      } catch (error) {
+        console.error('Failed to load discovered devices:', error);
+        list.innerHTML = '<div class="empty-state">Failed to scan for devices</div>';
+      }
+    }
+
+    async function scanDevices() {
+      showToast('Scanning network...', 'info');
+      await fetch('/api/discovery/scan');
+      setTimeout(loadDiscoveredDevices, 2000);
+    }
+
+    function showAdoptModal(id, name) {
+      adoptingDeviceId = id;
+      document.getElementById('adopt-name').value = name;
+      document.getElementById('adopt-location').value = '';
+      document.getElementById('adopt-modal').classList.remove('hidden');
+    }
+
+    function closeAdoptModal() {
+      document.getElementById('adopt-modal').classList.add('hidden');
+      adoptingDeviceId = null;
+    }
+
+    async function confirmAdopt() {
+      if (!adoptingDeviceId) return;
+
+      const name = document.getElementById('adopt-name').value;
+      const location = document.getElementById('adopt-location').value;
+
+      if (!name) {
+        showToast('Please enter a device name', 'error');
+        return;
+      }
+
+      try {
+        await fetch(`/api/discovery/adopt/${adoptingDeviceId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, location })
+        });
+
+        closeAdoptModal();
+        showToast('Device adopted successfully!', 'success');
+        loadDiscoveredDevices();
+        loadDevices();
+        document.querySelector('.tab[data-tab="devices"]').click();
+      } catch (error) {
+        showToast('Failed to adopt device', 'error');
+        console.error(error);
+      }
+    }
+
+    // Initial load
+    loadDevices();
+    setInterval(loadDevices, 30000);
+  </script>
+</body>
+</html>
