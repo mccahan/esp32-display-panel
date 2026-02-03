@@ -115,6 +115,8 @@ export async function fetchDeviceState(device: Device): Promise<any | null> {
 
 // Check if device is online (ping)
 export async function pingDevice(device: Device): Promise<boolean> {
+  const wasOffline = !device.online;
+
   try {
     const url = `http://${device.ip}/api/ping`;
     const response = await fetch(url);
@@ -123,6 +125,16 @@ export async function pingDevice(device: Device): Promise<boolean> {
     device.online = online;
     if (online) device.lastSeen = Date.now();
     upsertDevice(device);
+
+    // If device just came online, sync reporting URL
+    if (online && wasOffline) {
+      const reportingUrl = process.env.REPORTING_URL;
+      if (reportingUrl) {
+        console.log(`[DeviceService] Device ${device.name} came online, syncing reporting URL`);
+        await pushReportingUrlToDevice(device, reportingUrl);
+      }
+    }
+
     return online;
   } catch (error) {
     device.online = false;
