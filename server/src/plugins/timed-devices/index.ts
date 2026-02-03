@@ -122,7 +122,9 @@ class TimedDevicesPlugin implements Plugin {
     const timedDevice = this.getTimedDevices().find(td => td.id === timedDeviceId);
 
     if (!timedDevice) {
-      return { success: false, error: `Timed device ${timedDeviceId} not found` };
+      // Timed device was deleted - return false state so button resets
+      console.log(`[TimedDevices] Timed device ${timedDeviceId} not found (may have been deleted)`);
+      return { success: true, newState: false };
     }
 
     // Only trigger on "turn on" action (button press)

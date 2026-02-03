@@ -186,6 +186,14 @@ export function loadDevices(): void {
       let migrated = false;
 
       for (const device of devices.values()) {
+        // Initialize button states to false (will be updated by state sync)
+        if (device.config?.buttons) {
+          for (const button of device.config.buttons) {
+            if (button.state === undefined) button.state = false;
+            if (button.type === 'fan' && button.speedLevel === undefined) button.speedLevel = 0;
+          }
+        }
+
         if (!device.config?.server) continue;
 
         const server = device.config.server as any;
@@ -218,11 +226,23 @@ export function loadDevices(): void {
   }
 }
 
-// Save devices to file
+// Save devices to file (excluding transient button state)
 export function saveDevices(): void {
   try {
-    const data = Object.fromEntries(devices);
-    fs.writeFileSync(DEVICES_FILE, JSON.stringify(data, null, 2));
+    // Create a deep copy with button states stripped out
+    const dataToSave: Record<string, any> = {};
+    for (const [id, device] of devices) {
+      const deviceCopy = JSON.parse(JSON.stringify(device));
+      // Remove transient state from buttons - will be refreshed from plugins on startup
+      if (deviceCopy.config?.buttons) {
+        for (const button of deviceCopy.config.buttons) {
+          delete button.state;
+          delete button.speedLevel;
+        }
+      }
+      dataToSave[id] = deviceCopy;
+    }
+    fs.writeFileSync(DEVICES_FILE, JSON.stringify(dataToSave, null, 2));
   } catch (error) {
     console.error('Failed to save devices:', error);
   }
