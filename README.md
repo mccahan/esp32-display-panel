@@ -1,6 +1,6 @@
 # ESP32 Display Manager
 
-A smart home control panel built on the Guition ESP32-S3-4848S040 with a Node.js management server and plugin system for external integrations like Homebridge.
+A smart home control panel built on the Guition ESP32-S3-4848S040 with a Bun/TypeScript management server and plugin system for external integrations like Homebridge.
 
 ## Features
 
@@ -15,7 +15,7 @@ A smart home control panel built on the Guition ESP32-S3-4848S040 with a Node.js
 
 ```
 ┌─────────────────┐     ┌─────────────────────────────────────┐
-│   ESP32 Panel   │◄───►│         Node.js Server              │
+│   ESP32 Panel   │◄───►│           Bun Server                │
 │   (LVGL UI)     │     │  ┌─────────────────────────────┐    │
 └─────────────────┘     │  │     Plugin Manager          │    │
                         │  │  ┌─────────────────────┐    │    │
@@ -53,11 +53,38 @@ pio run -t upload
 
 ### 2. Start the Server
 
+**Option A: Run locally with Bun**
+
 ```bash
 cd server
-npm install
-npm run build
-npm start
+bun install
+bun run build
+bun start
+```
+
+**Option B: Run with Docker Compose**
+
+Create a `docker-compose.yml` file:
+
+```yaml
+services:
+  esp32-display-server:
+    image: ghcr.io/your-username/esp32-display-testing-server:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./server-data:/app/data
+    environment:
+      - PORT=3000
+      # Optional: Set reporting URL for devices behind reverse proxy/different port
+      # - REPORTING_URL=http://your-server:8080
+    restart: unless-stopped
+```
+
+Then run:
+
+```bash
+docker-compose up -d
 ```
 
 ### 3. Access the Dashboard
@@ -70,7 +97,7 @@ Open `http://localhost:3000` in your browser.
 
 ## Server
 
-The Node.js server (`server/`) provides:
+The Bun/TypeScript server (`server/`) provides:
 
 - **Device Management** - Track, configure, and push updates to ESP32 panels
 - **Plugin System** - Modular architecture for external integrations
