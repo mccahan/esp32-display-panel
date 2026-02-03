@@ -797,18 +797,18 @@
                 <div class="form-group">
                   <label>Icon</label>
                   <select id="scene-icon">
-                    <option value="power">Power</option>
+                    <option value="bolt">Bolt</option>
                     <option value="bulb">Bulb</option>
                     <option value="ceiling_light">Ceiling Light</option>
-                    <option value="bolt">Bolt</option>
-                    <option value="home">Home</option>
+                    <option value="ok">Check</option>
                     <option value="door">Door</option>
                     <option value="garage">Garage</option>
-                    <option value="moon">Moon</option>
-                    <option value="sun">Sun</option>
-                    <option value="sleep">Sleep</option>
-                    <option value="ok">Check</option>
                     <option value="settings">Gear</option>
+                    <option value="home">Home</option>
+                    <option value="moon">Moon</option>
+                    <option value="power">Power</option>
+                    <option value="sleep">Sleep</option>
+                    <option value="sun">Sun</option>
                   </select>
                 </div>
               </div>
@@ -1369,18 +1369,18 @@
           </select>
           ` : `
           <select onchange="updateButtonIcon(${i}, this.value)">
+            <option value="bolt" ${btn.icon === 'bolt' || btn.icon === 'charge' ? 'selected' : ''}>Bolt</option>
             <option value="bulb" ${btn.icon === 'bulb' ? 'selected' : ''}>Bulb</option>
             <option value="ceiling_light" ${btn.icon === 'ceiling_light' || btn.icon === 'ceiling-light' ? 'selected' : ''}>Ceiling Light</option>
-            <option value="bolt" ${btn.icon === 'bolt' || btn.icon === 'charge' ? 'selected' : ''}>Bolt</option>
-            <option value="fan" ${btn.icon === 'fan' ? 'selected' : ''}>Fan</option>
-            <option value="power" ${btn.icon === 'power' ? 'selected' : ''}>Power</option>
-            <option value="home" ${btn.icon === 'home' ? 'selected' : ''}>Home</option>
             <option value="door" ${btn.icon === 'door' ? 'selected' : ''}>Door</option>
+            <option value="fan" ${btn.icon === 'fan' ? 'selected' : ''}>Fan</option>
             <option value="garage" ${btn.icon === 'garage' ? 'selected' : ''}>Garage</option>
-            <option value="moon" ${btn.icon === 'moon' ? 'selected' : ''}>Moon</option>
-            <option value="sun" ${btn.icon === 'sun' ? 'selected' : ''}>Sun</option>
-            <option value="sleep" ${btn.icon === 'sleep' ? 'selected' : ''}>Sleep</option>
             <option value="settings" ${btn.icon === 'settings' ? 'selected' : ''}>Gear</option>
+            <option value="home" ${btn.icon === 'home' ? 'selected' : ''}>Home</option>
+            <option value="moon" ${btn.icon === 'moon' ? 'selected' : ''}>Moon</option>
+            <option value="power" ${btn.icon === 'power' ? 'selected' : ''}>Power</option>
+            <option value="sleep" ${btn.icon === 'sleep' ? 'selected' : ''}>Sleep</option>
+            <option value="sun" ${btn.icon === 'sun' ? 'selected' : ''}>Sun</option>
           </select>
           `}
           ${btn.type === 'fan' ? `
@@ -1538,17 +1538,17 @@
             </optgroup>
           </select>
           <select onchange="updateDeviceSceneIcon(${i}, this.value)">
-            <option value="power" ${scene.icon === 'power' ? 'selected' : ''}>Power</option>
+            <option value="bolt" ${scene.icon === 'bolt' || scene.icon === 'charge' ? 'selected' : ''}>Bolt</option>
             <option value="bulb" ${scene.icon === 'bulb' ? 'selected' : ''}>Bulb</option>
             <option value="ceiling_light" ${scene.icon === 'ceiling_light' || scene.icon === 'ceiling-light' ? 'selected' : ''}>Ceiling Light</option>
-            <option value="bolt" ${scene.icon === 'bolt' || scene.icon === 'charge' ? 'selected' : ''}>Bolt</option>
-            <option value="home" ${scene.icon === 'home' ? 'selected' : ''}>Home</option>
+            <option value="ok" ${scene.icon === 'ok' ? 'selected' : ''}>Check</option>
             <option value="door" ${scene.icon === 'door' ? 'selected' : ''}>Door</option>
             <option value="garage" ${scene.icon === 'garage' ? 'selected' : ''}>Garage</option>
+            <option value="home" ${scene.icon === 'home' ? 'selected' : ''}>Home</option>
             <option value="moon" ${scene.icon === 'moon' ? 'selected' : ''}>Moon</option>
-            <option value="sun" ${scene.icon === 'sun' ? 'selected' : ''}>Sun</option>
+            <option value="power" ${scene.icon === 'power' ? 'selected' : ''}>Power</option>
             <option value="sleep" ${scene.icon === 'sleep' ? 'selected' : ''}>Sleep</option>
-            <option value="ok" ${scene.icon === 'ok' ? 'selected' : ''}>Check</option>
+            <option value="sun" ${scene.icon === 'sun' ? 'selected' : ''}>Sun</option>
           </select>
         </div>
       `).join('');

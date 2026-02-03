@@ -638,13 +638,29 @@ void UIManager::createSceneButton(int index, const SceneConfig& scnConfig, bool 
         // Standard style
         themeEngine.styleButton(scene.button, isPrimary);
 
-        // Label with icon and text
-        scene.label = lv_label_create(scene.button);
-        String labelText = String(getIconSymbol(scnConfig.icon)) + " " + scnConfig.name;
-        lv_label_set_text(scene.label, labelText.c_str());
-        // Use white text on primary (accent) buttons, dark text on secondary buttons
-        lv_obj_set_style_text_color(scene.label, isPrimary ? lv_color_white() : theme.colors.textPrimary, 0);
-        lv_obj_center(scene.label);
+        // For image-based icons, create an image + label side by side
+        // For symbol icons, use a single label with icon + text
+        if (isImageIcon(scnConfig.icon)) {
+            // Create a horizontal container for image + text
+            lv_obj_t* iconImg = lv_img_create(scene.button);
+            lv_img_set_src(iconImg, getIconImage(scnConfig.icon));
+            lv_obj_set_style_img_recolor(iconImg, isPrimary ? lv_color_white() : theme.colors.textPrimary, 0);
+            lv_obj_set_style_img_recolor_opa(iconImg, LV_OPA_COVER, 0);
+            lv_obj_align(iconImg, LV_ALIGN_LEFT_MID, 15, 0);
+
+            scene.label = lv_label_create(scene.button);
+            lv_label_set_text(scene.label, scnConfig.name.c_str());
+            lv_obj_set_style_text_color(scene.label, isPrimary ? lv_color_white() : theme.colors.textPrimary, 0);
+            lv_obj_align(scene.label, LV_ALIGN_LEFT_MID, 55, 0);  // Offset for icon
+        } else {
+            // Label with symbol icon and text
+            scene.label = lv_label_create(scene.button);
+            String labelText = String(getIconSymbol(scnConfig.icon)) + " " + scnConfig.name;
+            lv_label_set_text(scene.label, labelText.c_str());
+            // Use white text on primary (accent) buttons, dark text on secondary buttons
+            lv_obj_set_style_text_color(scene.label, isPrimary ? lv_color_white() : theme.colors.textPrimary, 0);
+            lv_obj_center(scene.label);
+        }
     }
 
     lv_obj_add_event_cb(scene.button, onSceneClicked, LV_EVENT_CLICKED, (void*)(intptr_t)index);
