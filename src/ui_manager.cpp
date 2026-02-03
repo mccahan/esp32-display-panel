@@ -1412,7 +1412,7 @@ void UIManager::onFanSliderChanged(lv_event_t* e) {
             // Update config state
             configManager.setButtonState(card.buttonId, level > 0);
 
-            // Notify callback
+            // Notify callback (async HTTP, won't block UI)
             if (uiManager.buttonCallback) {
                 uiManager.buttonCallback(card.buttonId, level > 0);
             }
@@ -1629,7 +1629,7 @@ void UIManager::onToggleChanged(lv_event_t* e) {
         // Update config
         configManager.setButtonState(card.buttonId, newState);
 
-        // Notify callback
+        // Notify callback (async HTTP, won't block UI)
         if (uiManager.buttonCallback) {
             uiManager.buttonCallback(card.buttonId, newState);
         }
@@ -1705,7 +1705,7 @@ void UIManager::onCardClicked(lv_event_t* e) {
         // Update config
         configManager.setButtonState(card.buttonId, card.currentState);
 
-        // Notify callback
+        // Notify callback (async HTTP, won't block UI)
         if (uiManager.buttonCallback) {
             uiManager.buttonCallback(card.buttonId, card.currentState);
         }

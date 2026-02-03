@@ -7,6 +7,35 @@
 // Global instance
 DeviceController deviceController;
 
+// Async HTTP POST task data
+struct AsyncHttpPostData {
+    char url[256];
+    char payload[512];
+};
+
+// FreeRTOS task for async HTTP POST
+void asyncHttpPostTask(void* parameter) {
+    AsyncHttpPostData* data = (AsyncHttpPostData*)parameter;
+
+    HTTPClient http;
+    http.begin(data->url);
+    http.addHeader("Content-Type", "application/json");
+    http.setTimeout(2000);
+
+    int httpCode = http.POST(data->payload);
+    http.end();
+
+    if (httpCode > 0) {
+        Serial.printf("DeviceController: Async POST %s -> %d\n", data->url, httpCode);
+    } else {
+        Serial.printf("DeviceController: Async POST failed: %d\n", httpCode);
+    }
+
+    // Clean up and delete task
+    delete data;
+    vTaskDelete(NULL);
+}
+
 DeviceController::DeviceController()
     : serverConnected(false)
     , lastServerCheck(0)
@@ -87,6 +116,25 @@ void DeviceController::setAllButtons(bool state) {
     Serial.printf("DeviceController: All buttons set to %s\n", state ? "ON" : "OFF");
 }
 
+void DeviceController::httpPostAsync(const String& url, const String& payload) {
+    // Allocate data for the async task
+    AsyncHttpPostData* data = new AsyncHttpPostData();
+    strncpy(data->url, url.c_str(), sizeof(data->url) - 1);
+    data->url[sizeof(data->url) - 1] = '\0';
+    strncpy(data->payload, payload.c_str(), sizeof(data->payload) - 1);
+    data->payload[sizeof(data->payload) - 1] = '\0';
+
+    // Create task with minimal stack (HTTP client needs ~4KB)
+    xTaskCreate(
+        asyncHttpPostTask,
+        "AsyncHTTP",
+        4096,
+        data,
+        1,  // Low priority
+        NULL
+    );
+}
+
 void DeviceController::sendButtonWebhook(uint8_t buttonId, bool state) {
     // Rate limiting
     unsigned long now = millis();
@@ -114,7 +162,8 @@ void DeviceController::sendButtonWebhook(uint8_t buttonId, bool state) {
     String payload;
     serializeJson(doc, payload);
 
-    httpPost(url, payload);
+    // Use async POST so UI isn't blocked
+    httpPostAsync(url, payload);
 }
 
 void DeviceController::sendSceneWebhook(uint8_t sceneId) {
@@ -143,7 +192,8 @@ void DeviceController::sendSceneWebhook(uint8_t sceneId) {
     String payload;
     serializeJson(doc, payload);
 
-    httpPost(url, payload);
+    // Use async POST so UI isn't blocked
+    httpPostAsync(url, payload);
 }
 
 bool DeviceController::httpPost(const String& url, const String& payload) {

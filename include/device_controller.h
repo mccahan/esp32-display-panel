@@ -42,8 +42,9 @@ private:
     // Send webhook for scene action
     void sendSceneWebhook(uint8_t sceneId);
 
-    // HTTP POST helper
+    // HTTP POST helpers
     bool httpPost(const String& url, const String& payload);
+    void httpPostAsync(const String& url, const String& payload);
 
     // Track server connectivity
     bool serverConnected;
