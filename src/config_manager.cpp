@@ -333,10 +333,15 @@ bool ConfigManager::fetchConfigFromServer() {
             // Restore the reporting URL - device's local setting takes precedence over server
             config.server.reportingUrl = savedReportingUrl;
             saveConfig();
+            Serial.println("ConfigManager: Config parsed and saved successfully");
             return true;
+        } else {
+            Serial.println("ConfigManager: Failed to parse config JSON");
         }
     } else if (httpCode == HTTP_CODE_NOT_FOUND) {
         Serial.println("ConfigManager: Device not registered with server (404)");
+    } else if (httpCode < 0) {
+        Serial.printf("ConfigManager: Connection failed (error %d: %s)\n", httpCode, http.errorToString(httpCode).c_str());
     } else {
         Serial.printf("ConfigManager: HTTP error: %d\n", httpCode);
     }

@@ -262,11 +262,13 @@ void tryFetchServerConfig() {
         return;
     }
 
-    Serial.println("Attempting to fetch config from server...");
+    const String& reportingUrl = configManager.getConfig().server.reportingUrl;
+    Serial.printf("Attempting to fetch config from server: %s\n", reportingUrl.c_str());
+
     if (configManager.fetchConfigFromServer()) {
         Serial.println("Config fetched from server successfully");
     } else {
-        Serial.println("Using local config (server not available or device not registered)");
+        Serial.println("Failed to fetch config from server, using local config");
     }
 }
 
