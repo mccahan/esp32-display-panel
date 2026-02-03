@@ -207,11 +207,14 @@ class TimedDevicesPlugin implements Plugin {
     return { success: true, newState: true };
   }
 
-  // Get device state - always return false (scene buttons reset after trigger)
+  // Get device state - returns true only if there's an active job, false otherwise
   async getDeviceState(externalDeviceId: string): Promise<DeviceState | null> {
     const timedDevice = this.getTimedDevices().find(td => td.id === externalDeviceId);
+
+    // For timed devices (scene-like buttons), always return a state
+    // If the timed device was deleted or doesn't exist, return false
     if (!timedDevice) {
-      return null;
+      return { state: false, speedLevel: undefined };
     }
 
     // Check if there are any active jobs for this timed device
