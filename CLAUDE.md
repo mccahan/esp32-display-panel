@@ -59,9 +59,24 @@ curl -o screenshot.bmp http://<device-ip>/api/screenshot/download
 
 ### OTA Firmware Update
 
+**CLI Script (Recommended):** Use the `ota-flash.ts` script for mDNS-based device discovery and flashing:
+```bash
+# Install dependency (first time only)
+cd server && bun install && cd ..
+
+# Interactive mode - select device(s) to flash
+bun ota-flash.ts
+
+# Flash all discovered devices
+bun ota-flash.ts --all
+
+# Use custom firmware path
+bun ota-flash.ts --firmware path/to/firmware.bin
+```
+
 **Browser:** Upload `.pio/build/esp32s3/firmware.bin` at `http://<device-ip>/update`
 
-**curl:**
+**curl (manual):**
 ```bash
 # Get MD5 hash and upload via ElegantOTA endpoints
 MD5=$(md5 -q .pio/build/esp32s3/firmware.bin)
