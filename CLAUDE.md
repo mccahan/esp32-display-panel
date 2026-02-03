@@ -1,13 +1,13 @@
 # Claude Agent Instructions
 
-ESP32 smart display project with Node.js management server and plugin system.
+ESP32 smart display project with Bun/TypeScript management server and plugin system.
 
 ## Project Structure
 
 ```
 ├── src/                    # ESP32 firmware (C++/LVGL)
 ├── include/                # ESP32 headers
-├── server/                 # Node.js management server
+├── server/                 # Bun/TypeScript management server
 │   ├── src/
 │   │   ├── index.ts        # Server entry point
 │   │   ├── routes/         # API route handlers
@@ -47,8 +47,8 @@ pio run -t upload
 ### Build & Run Server
 ```bash
 cd server
-npm run build
-npm start
+bun run build
+bun start
 ```
 
 ### Take a Screenshot
@@ -142,5 +142,5 @@ Monitor with `pio device monitor` for:
 
 1. Read `DISPLAY-CLAUDE.md` for hardware/API details
 2. Check `server/src/plugins/types.ts` for interface definitions
-3. Run `npm run build` in server/ to catch TypeScript errors
-4. Test with `npm start` and check console logs
+3. Run `bun run build` in server/ to catch TypeScript errors
+4. Test with `bun start` and check console logs

@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+// Using bun's built-in fetch
 import {
   Device,
   DeviceConfig,
