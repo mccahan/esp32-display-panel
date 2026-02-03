@@ -53,7 +53,11 @@ router.put('/:id', async (req: Request, res: Response) => {
 
   try {
     const { enabled, settings } = req.body;
-    await pluginManager.setPluginConfig(req.params.id, { enabled, settings });
+    // Only include settings if explicitly provided to avoid overwriting existing settings
+    const configUpdate: { enabled?: boolean; settings?: Record<string, any> } = {};
+    if (enabled !== undefined) configUpdate.enabled = enabled;
+    if (settings !== undefined) configUpdate.settings = settings;
+    await pluginManager.setPluginConfig(req.params.id, configUpdate);
 
     const config = pluginManager.getPluginConfig(plugin.id);
     res.json({

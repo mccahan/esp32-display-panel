@@ -2698,20 +2698,29 @@
       if (!selectedPlugin) return;
 
       const enabled = document.getElementById('plugin-enabled').checked;
-      const settings = {};
+      let settings = null;
 
       // Collect settings based on plugin type
       if (selectedPlugin.id === 'homebridge') {
-        settings.serverUrl = document.getElementById('plugin-setting-serverUrl').value;
-        settings.username = document.getElementById('plugin-setting-username').value;
-        settings.password = document.getElementById('plugin-setting-password').value;
+        settings = {
+          serverUrl: document.getElementById('plugin-setting-serverUrl').value,
+          username: document.getElementById('plugin-setting-username').value,
+          password: document.getElementById('plugin-setting-password').value
+        };
+      }
+      // For timed-devices, don't send settings - they're managed separately via the custom UI
+
+      // Build request body - only include settings if we have plugin-specific ones to save
+      const body = { enabled };
+      if (settings !== null) {
+        body.settings = settings;
       }
 
       try {
         const response = await fetch(`/api/plugins/${selectedPlugin.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled, settings })
+          body: JSON.stringify(body)
         });
 
         if (response.ok) {
