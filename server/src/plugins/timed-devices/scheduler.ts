@@ -23,14 +23,25 @@ export type ActionExecutor = (
   newState: boolean
 ) => Promise<{ success: boolean; error?: string }>;
 
+export type StatePusher = (
+  pluginId: string,
+  externalDeviceId: string,
+  newState: boolean
+) => Promise<void>;
+
 class Scheduler {
   private jobs: Map<string, ScheduledJob> = new Map();
   private timers: Map<string, NodeJS.Timeout> = new Map();
   private jobCounter: number = 0;
   private actionExecutor: ActionExecutor | null = null;
+  private statePusher: StatePusher | null = null;
 
   setActionExecutor(executor: ActionExecutor): void {
     this.actionExecutor = executor;
+  }
+
+  setStatePusher(pusher: StatePusher): void {
+    this.statePusher = pusher;
   }
 
   scheduleJob(
@@ -92,6 +103,9 @@ class Scheduler {
         const result = await this.actionExecutor(device.pluginId, device.externalDeviceId, newState);
         if (!result.success) {
           errors.push(`${device.deviceName}: ${result.error || 'Unknown error'}`);
+        } else if (this.statePusher) {
+          // Push state update to all panels with buttons for this device
+          await this.statePusher(device.pluginId, device.externalDeviceId, newState);
         }
       } catch (err: any) {
         errors.push(`${device.deviceName}: ${err.message}`);

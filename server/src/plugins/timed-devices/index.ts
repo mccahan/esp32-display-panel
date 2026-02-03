@@ -8,6 +8,7 @@ import {
 } from '../types';
 import { scheduler, ScheduledJob, ActionExecutor } from './scheduler';
 import { pluginManager } from '../pluginManager';
+import { pushExternalDeviceState } from '../../services/stateSyncService';
 
 // Timed device configuration stored in plugin settings
 export interface TimedDeviceConfig {
@@ -72,6 +73,12 @@ class TimedDevicesPlugin implements Plugin {
     };
 
     scheduler.setActionExecutor(executor);
+
+    // Set up state pusher to update all panels when scheduled jobs execute
+    scheduler.setStatePusher(async (pluginId, externalDeviceId, newState) => {
+      await pushExternalDeviceState(pluginId, externalDeviceId, newState);
+    });
+
     console.log(`[TimedDevices] Initialized with ${this.getTimedDevices().length} timed device(s)`);
   }
 
@@ -163,7 +170,12 @@ class TimedDevicesPlugin implements Plugin {
             newState: true,
             timestamp: Date.now()
           };
-          await pluginManager.executeAction(turnOnCtx);
+          const result = await pluginManager.executeAction(turnOnCtx);
+
+          // Push state to all panels that have buttons for this device
+          if (result.success) {
+            await pushExternalDeviceState(device.pluginId, device.externalDeviceId, true);
+          }
         }
 
         // Schedule turn off

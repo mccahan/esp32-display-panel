@@ -323,3 +323,45 @@ export async function forceDevicePush(deviceId: string): Promise<void> {
     await pushAllStatesToDevice(device);
   }
 }
+
+// Push state update for a specific external device to all panels that have buttons bound to it
+export async function pushExternalDeviceState(
+  pluginId: string,
+  externalDeviceId: string,
+  newState: boolean,
+  speedLevel?: number
+): Promise<void> {
+  const devices = getAllDevices();
+
+  for (const device of devices) {
+    if (!device.online) continue;
+
+    const buttonUpdates: Array<{ id: number; state: boolean; speedLevel?: number }> = [];
+
+    for (const button of device.config.buttons) {
+      if (!button.binding) continue;
+      if (button.binding.pluginId !== pluginId) continue;
+      if (button.binding.externalDeviceId !== externalDeviceId) continue;
+
+      // Update local state
+      button.state = newState;
+      if (speedLevel !== undefined) {
+        button.speedLevel = speedLevel;
+      }
+
+      const update: { id: number; state: boolean; speedLevel?: number } = {
+        id: button.id,
+        state: newState
+      };
+      if (button.type === 'fan' && speedLevel !== undefined) {
+        update.speedLevel = speedLevel;
+      }
+      buttonUpdates.push(update);
+    }
+
+    if (buttonUpdates.length > 0) {
+      console.log(`[StateSync] Pushing ${buttonUpdates.length} button state(s) to ${device.name} for external device ${externalDeviceId}`);
+      await pushButtonStatesToDevice(device, buttonUpdates);
+    }
+  }
+}
