@@ -1,0 +1,473 @@
+<style>
+  .timed-device-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #0f0f1a;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border: 1px solid #2a2a4a;
+  }
+  .timed-device-item:hover { border-color: #3a3a5a; }
+  .timed-device-info { flex: 1; }
+  .timed-device-info .name { font-weight: 500; color: #fff; }
+  .timed-device-info .details { color: #888; font-size: 0.85em; margin-top: 2px; }
+  .timed-device-actions { display: flex; gap: 6px; }
+  .action-badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    margin-right: 10px;
+  }
+  .action-badge.on-for { background: #0f5132; color: #75b798; }
+  .action-badge.off-after { background: #664d03; color: #ffda6a; }
+  .action-badge.on-after { background: #084298; color: #6ea8fe; }
+
+  .job-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: #0f0f1a;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border: 1px solid #2a2a4a;
+  }
+  .job-item.pending { border-left: 3px solid #ffda6a; }
+  .job-item.executing { border-left: 3px solid #00d4ff; }
+  .job-item.completed { border-left: 3px solid #75b798; }
+  .job-item.failed { border-left: 3px solid #ea868f; }
+  .job-item.cancelled { border-left: 3px solid #888; }
+  .job-info { flex: 1; }
+  .job-info .name { font-weight: 500; }
+  .job-info .details { color: #888; font-size: 0.85em; margin-top: 2px; }
+  .job-status {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    text-transform: uppercase;
+  }
+  .job-status.pending { background: #664d03; color: #ffda6a; }
+  .job-status.executing { background: #0a4a6a; color: #00d4ff; }
+  .job-status.completed { background: #0f5132; color: #75b798; }
+  .job-status.failed { background: #58151c; color: #ea868f; }
+  .job-status.cancelled { background: #2a2a4a; color: #888; }
+
+  .target-device-checkbox {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    background: #0f0f1a;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    border: 1px solid #2a2a4a;
+    cursor: pointer;
+  }
+  .target-device-checkbox:hover { border-color: #3a3a5a; }
+  .target-device-checkbox.selected { border-color: #00d4ff; background: #0a1a2a; }
+  .target-device-checkbox input { margin-right: 12px; }
+  .target-device-checkbox .device-info { flex: 1; }
+  .target-device-checkbox .device-name { font-weight: 500; }
+  .target-device-checkbox .device-details { color: #888; font-size: 0.85em; }
+</style>
+
+<div class="card">
+  <h2>Timed Devices</h2>
+  <p style="color: #888; margin-bottom: 15px;">Create buttons that trigger timed actions on other devices.</p>
+  <button class="btn btn-primary btn-sm" onclick="timedDevicesUI.openCreateModal()" style="margin-bottom: 15px;">+ Create Timed Device</button>
+  <div id="timed-devices-list">
+    <div class="empty-state">No timed devices created yet</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Scheduled Jobs</h2>
+  <p style="color: #888; margin-bottom: 15px;">Active and recent timed actions.</p>
+  <button class="btn btn-secondary btn-sm" onclick="timedDevicesUI.refreshJobs()" style="margin-bottom: 15px;">Refresh</button>
+  <div id="timed-jobs-list">
+    <div class="empty-state">No scheduled jobs</div>
+  </div>
+</div>
+
+<!-- Create/Edit Timed Device Modal -->
+<div id="timed-device-modal" class="modal hidden">
+  <div class="modal-content modal-lg">
+    <h2 id="timed-device-modal-title">Create Timed Device</h2>
+    <p style="color: #888; margin-bottom: 15px;">
+      Create a button that triggers timed actions on one or more devices.
+    </p>
+
+    <div class="form-row">
+      <div class="form-group" style="flex: 2;">
+        <label>Name</label>
+        <input type="text" id="timed-device-name" placeholder="e.g., Garage Lights - 30 min">
+      </div>
+      <div class="form-group" style="flex: 1;">
+        <label>Icon</label>
+        <select id="timed-device-icon">
+          <option value="timer">Timer</option>
+          <option value="charge">Light</option>
+          <option value="power">Power</option>
+          <option value="home">Home</option>
+          <option value="settings">Gear</option>
+          <option value="fan">Fan</option>
+          <option value="moon">Moon</option>
+          <option value="sun">Sun</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group" style="flex: 2;">
+        <label>Action Type</label>
+        <select id="timed-device-action-type">
+          <option value="on_for">Turn on for X minutes (then turn off)</option>
+          <option value="off_after">Turn off after X minutes</option>
+          <option value="on_after">Turn on after X minutes</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex: 1;">
+        <label>Duration (minutes)</label>
+        <input type="number" id="timed-device-duration" min="1" max="1440" value="30" style="width: 100%;">
+      </div>
+    </div>
+
+    <h3>Target Devices</h3>
+    <p style="color: #888; font-size: 0.9em; margin-bottom: 10px;">
+      Select devices that will be controlled by this timed action.
+    </p>
+    <div id="timed-device-targets" style="max-height: 200px; overflow-y: auto; margin-bottom: 15px;">
+      <div class="empty-state">Loading available devices...</div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="timedDevicesUI.closeModal()">Cancel</button>
+      <button class="btn btn-success" id="timed-device-save-btn" onclick="timedDevicesUI.save()">Create</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // Timed Devices Plugin UI
+  const timedDevicesUI = {
+    sourceDevices: [],
+    selectedTargets: [],
+    editingId: null,
+
+    async load() {
+      await this.loadTimedDevices();
+      await this.refreshJobs();
+    },
+
+    async loadTimedDevices() {
+      const list = document.getElementById('timed-devices-list');
+      if (!list) return;
+
+      try {
+        const response = await fetch('/api/plugins/timed-devices/timed-devices');
+        const timedDevices = await response.json();
+
+        if (timedDevices.length === 0) {
+          list.innerHTML = '<div class="empty-state">No timed devices created yet</div>';
+          return;
+        }
+
+        list.innerHTML = timedDevices.map(td => {
+          const actionLabels = {
+            'on_for': 'On for',
+            'off_after': 'Off after',
+            'on_after': 'On after'
+          };
+          const actionLabel = actionLabels[td.actionType] || td.actionType;
+          const targetCount = td.targetDevices?.length || 0;
+
+          return `
+            <div class="timed-device-item">
+              <div class="timed-device-info">
+                <div class="name">${td.name}</div>
+                <div class="details">${targetCount} device(s) | ${actionLabel} ${td.durationMinutes}m</div>
+              </div>
+              <span class="action-badge ${td.actionType.replace('_', '-')}">${actionLabel} ${td.durationMinutes}m</span>
+              <div class="timed-device-actions">
+                <button class="btn btn-sm btn-secondary" onclick="timedDevicesUI.edit('${td.id}')">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="timedDevicesUI.delete('${td.id}')">Delete</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        list.innerHTML = '<div class="empty-state" style="color: #ea868f;">Failed to load timed devices</div>';
+        console.error(error);
+      }
+    },
+
+    async refreshJobs() {
+      const list = document.getElementById('timed-jobs-list');
+      if (!list) return;
+
+      try {
+        const response = await fetch('/api/plugins/timed-devices/jobs');
+        const jobs = await response.json();
+
+        if (jobs.length === 0) {
+          list.innerHTML = '<div class="empty-state">No scheduled jobs</div>';
+          return;
+        }
+
+        jobs.sort((a, b) => b.scheduledAt - a.scheduledAt);
+
+        list.innerHTML = jobs.map(job => {
+          const executeIn = job.executeAt - Date.now();
+          let executeInStr;
+          if (executeIn <= 0) {
+            executeInStr = 'now';
+          } else if (executeIn < 60000) {
+            executeInStr = `in ${Math.ceil(executeIn / 1000)}s`;
+          } else {
+            executeInStr = `in ${Math.ceil(executeIn / 60000)}m`;
+          }
+          const scheduledStr = new Date(job.scheduledAt).toLocaleTimeString();
+          const targetCount = job.targetDevices?.length || 0;
+
+          return `
+            <div class="job-item ${job.status}">
+              <div class="job-info">
+                <div class="name">${job.timedDeviceName} - ${job.action.replace('_', ' ')}</div>
+                <div class="details">${targetCount} device(s) | Scheduled at ${scheduledStr}${job.status === 'pending' ? ` | Executes ${executeInStr}` : ''}</div>
+              </div>
+              <span class="job-status ${job.status}">${job.status}</span>
+              ${job.status === 'pending' ? `<button class="btn btn-sm btn-danger" onclick="timedDevicesUI.cancelJob('${job.id}')" style="margin-left: 8px;">Cancel</button>` : ''}
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        list.innerHTML = '<div class="empty-state" style="color: #ea868f;">Failed to load jobs</div>';
+        console.error(error);
+      }
+    },
+
+    async openCreateModal() {
+      this.editingId = null;
+      this.selectedTargets = [];
+
+      document.getElementById('timed-device-modal-title').textContent = 'Create Timed Device';
+      document.getElementById('timed-device-save-btn').textContent = 'Create';
+      document.getElementById('timed-device-name').value = '';
+      document.getElementById('timed-device-icon').value = 'timer';
+      document.getElementById('timed-device-action-type').value = 'on_for';
+      document.getElementById('timed-device-duration').value = '30';
+
+      await this.loadSourceDevices();
+      document.getElementById('timed-device-modal').classList.remove('hidden');
+    },
+
+    async edit(timedDeviceId) {
+      this.editingId = timedDeviceId;
+
+      try {
+        const response = await fetch('/api/plugins/timed-devices/timed-devices');
+        const timedDevices = await response.json();
+        const td = timedDevices.find(t => t.id === timedDeviceId);
+
+        if (!td) {
+          showToast('Timed device not found', 'error');
+          return;
+        }
+
+        document.getElementById('timed-device-modal-title').textContent = 'Edit Timed Device';
+        document.getElementById('timed-device-save-btn').textContent = 'Save';
+        document.getElementById('timed-device-name').value = td.name;
+        document.getElementById('timed-device-icon').value = td.icon || 'timer';
+        document.getElementById('timed-device-action-type').value = td.actionType;
+        document.getElementById('timed-device-duration').value = td.durationMinutes;
+
+        this.selectedTargets = td.targetDevices.map(d => ({
+          pluginId: d.pluginId,
+          externalDeviceId: d.externalDeviceId,
+          deviceName: d.deviceName,
+          deviceType: d.deviceType
+        }));
+
+        await this.loadSourceDevices();
+        document.getElementById('timed-device-modal').classList.remove('hidden');
+      } catch (error) {
+        showToast('Failed to load timed device', 'error');
+        console.error(error);
+      }
+    },
+
+    async loadSourceDevices() {
+      const container = document.getElementById('timed-device-targets');
+      container.innerHTML = '<div class="empty-state">Loading devices...</div>';
+
+      try {
+        const response = await fetch('/api/plugins/timed-devices/source-devices');
+        this.sourceDevices = await response.json();
+
+        if (this.sourceDevices.length === 0) {
+          container.innerHTML = '<div class="empty-state">No devices available. Enable a device provider plugin first.</div>';
+          return;
+        }
+
+        this.sourceDevices.sort((a, b) => a.name.localeCompare(b.name));
+        this.renderTargetList();
+      } catch (error) {
+        container.innerHTML = '<div class="empty-state" style="color: #ea868f;">Failed to load devices</div>';
+        console.error(error);
+      }
+    },
+
+    renderTargetList() {
+      const container = document.getElementById('timed-device-targets');
+
+      container.innerHTML = this.sourceDevices.map((d, i) => {
+        const isSelected = this.selectedTargets.some(t =>
+          t.pluginId === d.pluginId && t.externalDeviceId === d.id
+        );
+
+        return `
+          <div class="target-device-checkbox ${isSelected ? 'selected' : ''}" onclick="timedDevicesUI.toggleTarget(${i})">
+            <input type="checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); timedDevicesUI.toggleTarget(${i})">
+            <div class="device-info">
+              <div class="device-name">${d.name}</div>
+              <div class="device-details">${d.pluginName} | ${d.room || 'No room'} | ${d.type}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    },
+
+    toggleTarget(index) {
+      const device = this.sourceDevices[index];
+      const existingIndex = this.selectedTargets.findIndex(t =>
+        t.pluginId === device.pluginId && t.externalDeviceId === device.id
+      );
+
+      if (existingIndex >= 0) {
+        this.selectedTargets.splice(existingIndex, 1);
+      } else {
+        this.selectedTargets.push({
+          pluginId: device.pluginId,
+          externalDeviceId: device.id,
+          deviceName: device.name,
+          deviceType: device.type
+        });
+      }
+
+      this.renderTargetList();
+    },
+
+    closeModal() {
+      document.getElementById('timed-device-modal').classList.add('hidden');
+      this.editingId = null;
+      this.selectedTargets = [];
+    },
+
+    async save() {
+      const name = document.getElementById('timed-device-name').value.trim();
+      const icon = document.getElementById('timed-device-icon').value;
+      const actionType = document.getElementById('timed-device-action-type').value;
+      const durationMinutes = parseInt(document.getElementById('timed-device-duration').value);
+
+      if (!name) {
+        showToast('Please enter a name', 'error');
+        return;
+      }
+
+      if (this.selectedTargets.length === 0) {
+        showToast('Please select at least one target device', 'error');
+        return;
+      }
+
+      if (isNaN(durationMinutes) || durationMinutes < 1) {
+        showToast('Please enter a valid duration', 'error');
+        return;
+      }
+
+      try {
+        const body = {
+          name,
+          icon,
+          actionType,
+          durationMinutes,
+          targetDevices: this.selectedTargets
+        };
+
+        const url = this.editingId
+          ? `/api/plugins/timed-devices/timed-devices/${this.editingId}`
+          : '/api/plugins/timed-devices/timed-devices';
+
+        const method = this.editingId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to save timed device');
+        }
+
+        showToast(this.editingId ? 'Timed device updated' : 'Timed device created', 'success');
+        this.closeModal();
+        await this.loadTimedDevices();
+      } catch (error) {
+        showToast(error.message, 'error');
+        console.error(error);
+      }
+    },
+
+    async delete(timedDeviceId) {
+      if (!confirm('Are you sure you want to delete this timed device?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/plugins/timed-devices/timed-devices/${timedDeviceId}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to delete timed device');
+        }
+
+        showToast('Timed device deleted', 'success');
+        await this.loadTimedDevices();
+      } catch (error) {
+        showToast(error.message, 'error');
+        console.error(error);
+      }
+    },
+
+    async cancelJob(jobId) {
+      try {
+        const response = await fetch(`/api/plugins/timed-devices/jobs/${jobId}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to cancel job');
+        }
+
+        showToast('Job cancelled', 'success');
+        await this.refreshJobs();
+      } catch (error) {
+        showToast(error.message, 'error');
+        console.error(error);
+      }
+    }
+  };
+
+  // Expose to global scope
+  window.timedDevicesUI = timedDevicesUI;
+
+  // Auto-load when script runs
+  timedDevicesUI.load();
+})();
+</script>

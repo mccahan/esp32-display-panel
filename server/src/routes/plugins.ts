@@ -1,8 +1,36 @@
 import { Router, Request, Response } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
 import { pluginManager } from '../plugins/pluginManager';
 import timedDevicesPlugin from '../plugins/timed-devices';
 
 const router = Router();
+
+// GET /api/plugins/:id/ui - Get plugin configuration UI
+router.get('/:id/ui', (req: Request, res: Response) => {
+  const pluginId = req.params.id;
+  const plugin = pluginManager.getPlugin(pluginId);
+
+  if (!plugin) {
+    return res.status(404).json({ error: 'Plugin not found' });
+  }
+
+  // Look for UI file in plugin directory
+  const uiPath = path.join(__dirname, '../plugins', pluginId, 'ui', 'config.html');
+
+  if (!fs.existsSync(uiPath)) {
+    // No custom UI - return empty
+    return res.json({ hasUI: false });
+  }
+
+  try {
+    const content = fs.readFileSync(uiPath, 'utf-8');
+    res.json({ hasUI: true, content });
+  } catch (error: any) {
+    console.error(`Failed to load plugin UI for ${pluginId}:`, error);
+    res.status(500).json({ error: 'Failed to load plugin UI' });
+  }
+});
 
 // GET /api/plugins - List all plugins with status
 router.get('/', (req: Request, res: Response) => {
