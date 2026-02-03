@@ -50,6 +50,7 @@ void DisplayWebServer::setupRoutes() {
         doc["uptime_seconds"] = millis() / 1000;
         doc["ip_address"] = WiFi.localIP().toString();
         doc["mac_address"] = WiFi.macAddress();
+        doc["reporting_url"] = configManager.getConfig().server.reportingUrl;
 
         String response;
         serializeJson(doc, response);
@@ -444,8 +445,6 @@ void DisplayWebServer::setupRoutes() {
         const DeviceConfig& config = configManager.getConfig();
 
         StaticJsonDocument<256> doc;
-        doc["host"] = config.server.host;
-        doc["port"] = config.server.port;
         doc["reportingUrl"] = config.server.reportingUrl;
 
         String response;
@@ -625,6 +624,10 @@ String DisplayWebServer::getIndexPage() {
                     <div class="info-item">
                         <div class="info-label">IP Address</div>
                         <div class="info-value">${data.ip_address}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Reporting URL</div>
+                        <div class="info-value" style="font-size: 0.9em; word-break: break-all;">${data.reporting_url || 'Not configured'}</div>
                     </div>
                 `;
             } catch (e) {

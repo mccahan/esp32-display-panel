@@ -168,14 +168,7 @@ bool ConfigManager::parseConfigJson(const String& json) {
 
     // Parse server config
     JsonObject server = doc["server"];
-    config.server.host = server["host"] | "10.0.1.250";
-    config.server.port = server["port"] | 3000;
-    config.server.reportingUrl = server["reportingUrl"] | "";
-
-    // If no reporting URL, construct from host/port for backwards compatibility
-    if (config.server.reportingUrl.length() == 0) {
-        config.server.reportingUrl = "http://" + config.server.host + ":" + String(config.server.port);
-    }
+    config.server.reportingUrl = server["reportingUrl"] | "http://10.0.1.250:3000";
 
     configured = true;
     Serial.println("ConfigManager: Config parsed successfully");
@@ -260,8 +253,6 @@ String ConfigManager::toJson() {
 
     // Server config
     JsonObject server = doc.createNestedObject("server");
-    server["host"] = config.server.host;
-    server["port"] = config.server.port;
     server["reportingUrl"] = config.server.reportingUrl;
 
     String json;
@@ -314,12 +305,6 @@ const DeviceConfig& ConfigManager::getConfig() const {
 
 DeviceConfig& ConfigManager::getConfigMutable() {
     return config;
-}
-
-void ConfigManager::setServerAddress(const String& host, uint16_t port) {
-    config.server.host = host;
-    config.server.port = port;
-    config.server.reportingUrl = "http://" + host + ":" + String(port);
 }
 
 void ConfigManager::setReportingUrl(const String& url) {
@@ -430,8 +415,6 @@ void ConfigManager::createDefaultConfig() {
     config.scenes.push_back(sceneOn);
 
     // Server config
-    config.server.host = "10.0.1.250";
-    config.server.port = 3000;
     config.server.reportingUrl = "http://10.0.1.250:3000";
 
     Serial.println("ConfigManager: Created default configuration");

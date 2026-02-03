@@ -76,8 +76,6 @@ struct DisplayConfig {
 
 // Server configuration
 struct ServerConfig {
-    String host;        // Legacy: hostname
-    uint16_t port;      // Legacy: port
     String reportingUrl; // Full URL for API calls (e.g., "http://192.168.1.100:8080")
 };
 
@@ -126,10 +124,7 @@ public:
     // Get mutable configuration for updates
     DeviceConfig& getConfigMutable();
 
-    // Set server address for config fetch
-    void setServerAddress(const String& host, uint16_t port);
-
-    // Set reporting URL directly
+    // Set reporting URL
     void setReportingUrl(const String& url);
 
     // Get device ID (MAC-based if not configured)

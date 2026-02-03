@@ -69,7 +69,7 @@ Create a `docker-compose.yml` file:
 ```yaml
 services:
   esp32-display-server:
-    image: ghcr.io/your-username/esp32-display-testing-server:latest
+    image: ghcr.io/mccahan/esp32-display-panel-server:latest
     ports:
       - "3000:3000"
     volumes:

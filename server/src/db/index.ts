@@ -102,9 +102,7 @@ export interface DisplayConfig {
 
 // Server configuration
 export interface ServerConfig {
-  host: string;
-  port: number;
-  reportingUrl?: string;  // Full URL for device to report to (may differ from host:port due to Docker/proxy)
+  reportingUrl: string;  // Full URL for device to report to
 }
 
 // Device information
@@ -256,8 +254,7 @@ export function createDefaultConfig(deviceId: string, name: string, ip: string):
       { id: 2, name: 'All On', icon: 'ok' }
     ],
     server: {
-      host: ip,
-      port: 3000
+      reportingUrl: `http://${ip}:3000`
     }
   };
 }
