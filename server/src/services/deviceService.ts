@@ -37,28 +37,37 @@ function convertScheduleForDevice(schedule: BrightnessScheduleConfig | undefined
   };
 }
 
+// Prepare device config for ESP32 consumption
+// - Applies global schedule if useGlobalSchedule is true
+// - Converts schedule format (IANA→POSIX timezone, startTime→startHour/startMinute)
+export function prepareConfigForDevice(device: Device): any {
+  // Determine which brightness schedule to use (global or device-specific)
+  let effectiveSchedule = device.config.display.brightnessSchedule;
+  if (device.config.display.useGlobalSchedule) {
+    const globalSettings = getGlobalSettings();
+    effectiveSchedule = globalSettings.brightnessSchedule;
+  }
+
+  // Prepare config for device, converting brightness schedule format
+  return {
+    ...device.config,
+    display: {
+      ...device.config.display,
+      brightnessSchedule: convertScheduleForDevice(effectiveSchedule)
+    }
+  };
+}
+
 // Push configuration to a device
 export async function pushConfigToDevice(device: Device): Promise<boolean> {
   try {
     const url = `http://${device.ip}/api/config`;
     console.log(`Pushing config to ${device.name} at ${url}`);
 
-    // Determine which brightness schedule to use (global or device-specific)
-    let effectiveSchedule = device.config.display.brightnessSchedule;
+    const configForDevice = prepareConfigForDevice(device);
     if (device.config.display.useGlobalSchedule) {
-      const globalSettings = getGlobalSettings();
-      effectiveSchedule = globalSettings.brightnessSchedule;
       console.log(`[DeviceService] Using global brightness schedule for ${device.name}`);
     }
-
-    // Prepare config for device, converting brightness schedule format
-    const configForDevice = {
-      ...device.config,
-      display: {
-        ...device.config.display,
-        brightnessSchedule: convertScheduleForDevice(effectiveSchedule)
-      }
-    };
 
     const response = await fetch(url, {
       method: 'POST',

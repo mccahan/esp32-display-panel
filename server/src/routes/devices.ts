@@ -9,6 +9,7 @@ import {
 } from '../db';
 import {
   pushConfigToDevice,
+  prepareConfigForDevice,
   fetchDeviceState,
   updateDeviceConfig,
   captureDeviceScreenshot,
@@ -57,7 +58,8 @@ router.get('/:id/config', (req: Request, res: Response) => {
   device.lastSeen = Date.now();
   device.online = true;
 
-  res.json(device.config);
+  // Return config converted for ESP32 (POSIX timezone, startHour/startMinute)
+  res.json(prepareConfigForDevice(device));
 });
 
 // PUT /api/devices/:id - Update device configuration

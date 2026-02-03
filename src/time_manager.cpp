@@ -20,12 +20,9 @@ TimeManager::TimeManager()
 void TimeManager::begin() {
     Serial.println("TimeManager: Initializing...");
 
-    // Set default timezone
-    setenv("TZ", currentTimezone.c_str(), 1);
-    tzset();
-
-    // Configure NTP
-    configTime(0, 0, NTP_SERVER1, NTP_SERVER2, NTP_SERVER3);
+    // Configure NTP with POSIX timezone string
+    // Using configTzTime instead of configTime to properly apply timezone
+    configTzTime(currentTimezone.c_str(), NTP_SERVER1, NTP_SERVER2, NTP_SERVER3);
 
     Serial.printf("TimeManager: Timezone set to %s\n", currentTimezone.c_str());
 }
@@ -38,6 +35,7 @@ void TimeManager::setTimezone(const String& posixTimezone) {
 
     if (posixTimezone != currentTimezone) {
         currentTimezone = posixTimezone;
+        // Update timezone using setenv + tzset (works after configTzTime was called)
         setenv("TZ", currentTimezone.c_str(), 1);
         tzset();
         Serial.printf("TimeManager: Timezone updated to %s\n", currentTimezone.c_str());
