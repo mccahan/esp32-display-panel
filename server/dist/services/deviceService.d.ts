@@ -9,4 +9,9 @@ export declare function updateDeviceConfig(deviceId: string, updates: Partial<De
 export declare function checkAllDevicesHealth(): Promise<void>;
 export declare function startHealthChecks(intervalMs?: number): void;
 export declare function stopHealthChecks(): void;
+export declare function pushButtonStatesToDevice(device: Device, buttonUpdates: Array<{
+    id: number;
+    state: boolean;
+    speedLevel?: number;
+}>): Promise<boolean>;
 //# sourceMappingURL=deviceService.d.ts.map

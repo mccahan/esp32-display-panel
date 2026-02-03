@@ -45,6 +45,12 @@ export interface ActionResult {
   error?: string;
 }
 
+// Device state returned from external system polling
+export interface DeviceState {
+  state: boolean;
+  speedLevel?: number;  // 0-100 for fans
+}
+
 // HTTP request configuration for simple HTTP action plugins
 export interface HttpRequest {
   url: string;
@@ -77,6 +83,9 @@ export interface Plugin {
 
   // Connection test method (optional)
   testConnection?(): Promise<{ success: boolean; message: string }>;
+
+  // Fetch current state of an external device (optional - for state polling)
+  getDeviceState?(externalDeviceId: string): Promise<DeviceState | null>;
 }
 
 // Plugin storage format in plugins.json

@@ -302,6 +302,19 @@ void DisplayWebServer::setupRoutes() {
         }
     );
 
+    // API: Receive button state updates (POST) - for state sync from server
+    server.on("/api/state/buttons", HTTP_POST,
+        [](AsyncWebServerRequest *request) {
+            // Response sent after body processed
+        },
+        NULL,
+        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            String json = String((char*)data).substring(0, len);
+            deviceController.processServerStateUpdate(json);
+            request->send(200, "application/json", "{\"success\":true}");
+        }
+    );
+
     // API: Set brightness (POST)
     server.on("/api/brightness", HTTP_POST,
         [](AsyncWebServerRequest *request) {

@@ -177,8 +177,15 @@ void DeviceController::processServerStateUpdate(const String& json) {
         uint8_t id = btn["id"];
         bool state = btn["state"];
 
-        configManager.setButtonState(id, state);
-        uiManager.updateButtonState(id, state);
+        // Check if speedLevel is present (for fans)
+        if (btn.containsKey("speedLevel")) {
+            uint8_t speedLevel = btn["speedLevel"];
+            uiManager.setFanSpeed(id, speedLevel);
+            configManager.setButtonState(id, speedLevel > 0);
+        } else {
+            configManager.setButtonState(id, state);
+            uiManager.updateButtonState(id, state);
+        }
     }
 
     // Update display settings if present

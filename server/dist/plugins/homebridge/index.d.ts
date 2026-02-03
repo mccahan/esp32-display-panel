@@ -1,4 +1,4 @@
-import { Plugin, PluginConfig, ImportableDevice, ActionContext, ActionResult } from '../types';
+import { Plugin, PluginConfig, ImportableDevice, ActionContext, ActionResult, DeviceState } from '../types';
 declare class HomebridgePlugin implements Plugin {
     id: string;
     name: string;
@@ -20,6 +20,7 @@ declare class HomebridgePlugin implements Plugin {
         success: boolean;
         message: string;
     }>;
+    getDeviceState(externalDeviceId: string): Promise<DeviceState | null>;
 }
 declare const _default: HomebridgePlugin;
 export default _default;

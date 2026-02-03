@@ -35,6 +35,10 @@ export interface ActionResult {
     newState?: boolean;
     error?: string;
 }
+export interface DeviceState {
+    state: boolean;
+    speedLevel?: number;
+}
 export interface HttpRequest {
     url: string;
     method: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -55,6 +59,7 @@ export interface Plugin {
         success: boolean;
         message: string;
     }>;
+    getDeviceState?(externalDeviceId: string): Promise<DeviceState | null>;
 }
 export interface PluginStorage {
     configs: Record<string, PluginConfig>;

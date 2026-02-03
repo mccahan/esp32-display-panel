@@ -7,7 +7,8 @@ import discoveryRouter from './routes/discovery';
 import actionsRouter from './routes/actions';
 import pluginsRouter from './routes/plugins';
 import { startDiscovery } from './services/discoveryService';
-import { startHealthChecks } from './services/deviceService';
+import { startHealthChecks, stopHealthChecks } from './services/deviceService';
+import { startStatePolling, stopStatePolling } from './services/stateSyncService';
 import { pluginManager } from './plugins/pluginManager';
 
 // Import plugins
@@ -61,18 +62,25 @@ async function start() {
 
     // Start periodic health checks (every 60 seconds)
     startHealthChecks(60000);
+
+    // Start state polling for external device changes (every 30 seconds)
+    startStatePolling(30000);
   });
 }
 
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\nShutting down...');
+  stopStatePolling();
+  stopHealthChecks();
   await pluginManager.shutdown();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   console.log('\nShutting down...');
+  stopStatePolling();
+  stopHealthChecks();
   await pluginManager.shutdown();
   process.exit(0);
 });

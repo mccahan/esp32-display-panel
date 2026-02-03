@@ -267,6 +267,24 @@ class PluginManager {
             }
         }
     }
+    // Get device state through plugin (for state polling)
+    async getDeviceState(binding) {
+        const plugin = this.plugins.get(binding.pluginId);
+        if (!plugin?.getDeviceState) {
+            return null;
+        }
+        const config = this.configs.get(binding.pluginId);
+        if (!config?.enabled) {
+            return null;
+        }
+        try {
+            return await plugin.getDeviceState(binding.externalDeviceId);
+        }
+        catch (error) {
+            console.error(`Error getting device state for ${binding.externalDeviceId}:`, error.message);
+            return null;
+        }
+    }
 }
 // Singleton instance
 exports.pluginManager = new PluginManager();

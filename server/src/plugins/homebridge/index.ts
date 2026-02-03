@@ -3,7 +3,8 @@ import {
   PluginConfig,
   ImportableDevice,
   ActionContext,
-  ActionResult
+  ActionResult,
+  DeviceState
 } from '../types';
 
 // Homebridge accessory from API
@@ -351,6 +352,42 @@ class HomebridgePlugin implements Plugin {
         success: false,
         message: `Connection failed: ${error.message}`
       };
+    }
+  }
+
+  // Fetch current state of a device from Homebridge
+  async getDeviceState(externalDeviceId: string): Promise<DeviceState | null> {
+    try {
+      const baseUrl = this.getBaseUrl();
+      const token = await this.getToken();
+
+      const response = await fetch(`${baseUrl}/api/accessories/${externalDeviceId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        console.log(`Homebridge: Failed to get state for ${externalDeviceId}: ${response.status}`);
+        return null;
+      }
+
+      const accessory = await response.json() as HomebridgeAccessory;
+
+      // Extract On characteristic value
+      const onChar = accessory.serviceCharacteristics?.find(c => c.type === 'On');
+      const speedChar = accessory.serviceCharacteristics?.find(c => c.type === 'RotationSpeed');
+
+      const state = onChar?.value === 1 || onChar?.value === true;
+      const speedLevel = speedChar?.value as number | undefined;
+
+      return {
+        state,
+        speedLevel
+      };
+    } catch (error: any) {
+      console.error(`Homebridge: Error fetching state for ${externalDeviceId}:`, error.message);
+      return null;
     }
   }
 }

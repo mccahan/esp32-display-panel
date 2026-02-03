@@ -1,4 +1,4 @@
-import { Plugin, PluginConfig, ImportableDevice, ActionContext, ActionResult } from './types';
+import { Plugin, PluginConfig, ImportableDevice, ActionContext, ActionResult, ButtonBinding, DeviceState } from './types';
 declare class PluginManager {
     private plugins;
     private configs;
@@ -19,6 +19,7 @@ declare class PluginManager {
         success: boolean;
         message: string;
     }>;
+    getDeviceState(binding: ButtonBinding): Promise<DeviceState | null>;
 }
 export declare const pluginManager: PluginManager;
 export {};

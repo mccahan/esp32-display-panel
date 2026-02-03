@@ -252,6 +252,36 @@ class HomebridgePlugin {
             };
         }
     }
+    // Fetch current state of a device from Homebridge
+    async getDeviceState(externalDeviceId) {
+        try {
+            const baseUrl = this.getBaseUrl();
+            const token = await this.getToken();
+            const response = await fetch(`${baseUrl}/api/accessories/${externalDeviceId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (!response.ok) {
+                console.log(`Homebridge: Failed to get state for ${externalDeviceId}: ${response.status}`);
+                return null;
+            }
+            const accessory = await response.json();
+            // Extract On characteristic value
+            const onChar = accessory.serviceCharacteristics?.find(c => c.type === 'On');
+            const speedChar = accessory.serviceCharacteristics?.find(c => c.type === 'RotationSpeed');
+            const state = onChar?.value === 1 || onChar?.value === true;
+            const speedLevel = speedChar?.value;
+            return {
+                state,
+                speedLevel
+            };
+        }
+        catch (error) {
+            console.error(`Homebridge: Error fetching state for ${externalDeviceId}:`, error.message);
+            return null;
+        }
+    }
 }
 exports.default = new HomebridgePlugin();
 //# sourceMappingURL=index.js.map

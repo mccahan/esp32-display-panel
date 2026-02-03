@@ -6,7 +6,9 @@ import {
   PluginStorage,
   ImportableDevice,
   ActionContext,
-  ActionResult
+  ActionResult,
+  ButtonBinding,
+  DeviceState
 } from './types';
 
 // Data directory path
@@ -260,6 +262,26 @@ class PluginManager {
       if (!wasEnabled) {
         await plugin.shutdown();
       }
+    }
+  }
+
+  // Get device state through plugin (for state polling)
+  async getDeviceState(binding: ButtonBinding): Promise<DeviceState | null> {
+    const plugin = this.plugins.get(binding.pluginId);
+    if (!plugin?.getDeviceState) {
+      return null;
+    }
+
+    const config = this.configs.get(binding.pluginId);
+    if (!config?.enabled) {
+      return null;
+    }
+
+    try {
+      return await plugin.getDeviceState(binding.externalDeviceId);
+    } catch (error: any) {
+      console.error(`Error getting device state for ${binding.externalDeviceId}:`, error.message);
+      return null;
     }
   }
 }

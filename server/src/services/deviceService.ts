@@ -190,3 +190,30 @@ export function stopHealthChecks(): void {
     healthCheckInterval = null;
   }
 }
+
+// Push button state updates to a device
+export async function pushButtonStatesToDevice(
+  device: Device,
+  buttonUpdates: Array<{ id: number; state: boolean; speedLevel?: number }>
+): Promise<boolean> {
+  try {
+    const url = `http://${device.ip}/api/state/buttons`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ buttons: buttonUpdates })
+    });
+
+    if (response.ok) {
+      device.lastSeen = Date.now();
+      device.online = true;
+      return true;
+    }
+    console.error(`Failed to push button states to ${device.name}: ${response.status}`);
+    return false;
+  } catch (error) {
+    console.error(`Error pushing button states to ${device.name}:`, error);
+    device.online = false;
+    return false;
+  }
+}
