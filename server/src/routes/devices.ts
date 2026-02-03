@@ -59,7 +59,10 @@ router.get('/:id/config', (req: Request, res: Response) => {
   device.online = true;
 
   // Return config converted for ESP32 (POSIX timezone, startHour/startMinute)
-  res.json(prepareConfigForDevice(device));
+  // Include server time for immediate time sync (faster than waiting for NTP)
+  const config = prepareConfigForDevice(device);
+  config.serverTime = Math.floor(Date.now() / 1000);  // Unix timestamp in seconds
+  res.json(config);
 });
 
 // PUT /api/devices/:id - Update device configuration

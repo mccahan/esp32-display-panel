@@ -1,4 +1,5 @@
 #include "config_manager.h"
+#include "time_manager.h"
 #include <Preferences.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
@@ -190,6 +191,14 @@ bool ConfigManager::parseConfigJson(const String& json) {
     // Parse server config
     JsonObject server = doc["server"];
     config.server.reportingUrl = server["reportingUrl"] | "http://10.0.1.250:3000";
+
+    // If server provided current time, use it for immediate sync (faster than NTP)
+    if (doc.containsKey("serverTime")) {
+        uint32_t serverTime = doc["serverTime"];
+        if (serverTime > 1700000000) {  // Sanity check: after Nov 2023
+            timeManager.setTimeFromServer(serverTime);
+        }
+    }
 
     configured = true;
     Serial.println("ConfigManager: Config parsed successfully");

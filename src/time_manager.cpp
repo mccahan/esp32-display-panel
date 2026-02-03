@@ -1,6 +1,7 @@
 #include "time_manager.h"
 #include <WiFi.h>
 #include <time.h>
+#include <sys/time.h>
 
 // NTP servers
 const char* TimeManager::NTP_SERVER1 = "pool.ntp.org";
@@ -60,6 +61,23 @@ uint8_t TimeManager::getCurrentMinute() const {
         return 0;
     }
     return timeinfo.tm_min;
+}
+
+void TimeManager::setTimeFromServer(uint32_t unixTimestamp) {
+    struct timeval tv;
+    tv.tv_sec = unixTimestamp;
+    tv.tv_usec = 0;
+    settimeofday(&tv, NULL);
+
+    synced = true;
+    lastSuccessfulSync = millis();
+
+    // Print the time we just set
+    struct tm timeinfo;
+    if (getLocalTime(&timeinfo)) {
+        Serial.printf("TimeManager: Time set from server: %02d:%02d:%02d\n",
+            timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    }
 }
 
 void TimeManager::update() {

@@ -20,6 +20,9 @@ public:
     uint8_t getCurrentHour() const;    // 0-23
     uint8_t getCurrentMinute() const;  // 0-59
 
+    // Set time from server-provided Unix timestamp (faster than NTP)
+    void setTimeFromServer(uint32_t unixTimestamp);
+
     // Update function - call periodically to re-sync NTP
     void update();
 
