@@ -10,6 +10,7 @@
 #include <WiFi.h>
 #include <ElegantOTA.h>
 #include <Preferences.h>
+#include <esp_timer.h>
 
 // Global instance
 DisplayWebServer webServer;
@@ -57,10 +58,18 @@ void DisplayWebServer::setupOTA() {
         Serial.println("\n========================================");
         if (success) {
             Serial.println("OTA Update Complete!");
-            Serial.println("Device will reboot automatically...");
+            Serial.println("Rebooting...");
             Serial.println("========================================\n");
-            // Don't call ESP.restart() here - let ElegantOTA send HTTP response first
-            // Auto-reboot is enabled via setAutoReboot(true)
+            // Delay reboot slightly to allow HTTP response to be sent
+            // Can't use delay() here as it blocks the response, so schedule via timer
+            static esp_timer_handle_t reboot_timer = nullptr;
+            if (!reboot_timer) {
+                esp_timer_create_args_t timer_args = {};
+                timer_args.callback = [](void*) { ESP.restart(); };
+                timer_args.name = "reboot";
+                esp_timer_create(&timer_args, &reboot_timer);
+            }
+            esp_timer_start_once(reboot_timer, 100000); // 100ms delay
         } else {
             Serial.println("OTA Update FAILED!");
             Serial.println("========================================\n");
