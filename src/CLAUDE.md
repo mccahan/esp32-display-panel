@@ -9,4 +9,5 @@
 |----|------|---|-------|------|
 | #83 | 9:35 AM | ✅ | Cleaned Up Previous Fan Icon Attempt | ~212 |
 | #78 | 9:34 AM | 🔴 | Fix Distorted Fan Icon in ESP32 Display | ~345 |
+| #73 | 9:27 AM | 🔵 | Fan Icon References in Overlay Code Located | ~348 |
 </claude-mem-context>

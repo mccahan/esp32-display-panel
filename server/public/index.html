@@ -530,6 +530,10 @@
     #live-preview-content.expanded {
       max-height: 600px;
     }
+    #schedule-content.expanded {
+      max-height: none;
+      overflow-y: visible;
+    }
 
     /* Scene styles */
     .scene-item {
@@ -1079,6 +1083,15 @@
       }
     }
 
+    function collapseCollapsible(header) {
+      header.classList.add('collapsed');
+      const content = header.nextElementSibling;
+      if (content && content.classList.contains('collapsible-content')) {
+        content.classList.add('collapsed');
+        content.classList.remove('expanded');
+      }
+    }
+
     // ========================================
     // Deep-link Routing
     // ========================================
@@ -1555,6 +1568,16 @@
       // Re-render periods to show/hide active indicator
       const schedule = selectedDevice.config.display.brightnessSchedule;
       renderSchedulePeriods(schedule.periods, schedule.timezone, enabled);
+
+      // Expand/collapse the schedule settings section
+      const scheduleHeader = document.querySelector('#schedule-content').previousElementSibling;
+      if (scheduleHeader) {
+        if (enabled) {
+          expandCollapsible(scheduleHeader);
+        } else {
+          collapseCollapsible(scheduleHeader);
+        }
+      }
     }
 
     // Touch brightness slider event listener
