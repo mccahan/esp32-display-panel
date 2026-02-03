@@ -275,7 +275,10 @@ bool ConfigManager::fetchConfigFromServer() {
         return false;
     }
 
-    String url = config.server.reportingUrl + "/api/devices/" + getDeviceId() + "/config";
+    // Preserve current reporting URL - this is set locally and shouldn't be overwritten by server
+    String savedReportingUrl = config.server.reportingUrl;
+
+    String url = savedReportingUrl + "/api/devices/" + getDeviceId() + "/config";
 
     Serial.printf("ConfigManager: Fetching config from %s\n", url.c_str());
 
@@ -290,6 +293,8 @@ bool ConfigManager::fetchConfigFromServer() {
         http.end();
 
         if (parseConfigJson(payload)) {
+            // Restore the reporting URL - device's local setting takes precedence over server
+            config.server.reportingUrl = savedReportingUrl;
             saveConfig();
             return true;
         }
