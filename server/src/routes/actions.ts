@@ -1,45 +1,92 @@
 import { Router, Request, Response } from 'express';
-import { getDevice, getAllDevices } from '../db';
+import { getDevice, upsertDevice } from '../db';
+import { pluginManager } from '../plugins/pluginManager';
 
 const router = Router();
 
+// Helper function to handle button action with optional plugin routing
+async function handleButtonAction(
+  buttonId: number,
+  deviceId: string,
+  state: boolean,
+  timestamp: number,
+  speedLevel?: number
+): Promise<{ success: boolean; state: boolean; error?: string }> {
+  const device = getDevice(deviceId);
+  if (!device) {
+    return { success: false, state, error: 'Device not found' };
+  }
+
+  const button = device.config.buttons.find(b => b.id === buttonId);
+  if (!button) {
+    return { success: false, state, error: 'Button not found' };
+  }
+
+  // If button has a plugin binding, route through plugin system
+  if (button.binding) {
+    const result = await pluginManager.executeAction({
+      deviceId,
+      buttonId,
+      binding: button.binding,
+      newState: state,
+      speedLevel,
+      timestamp
+    });
+
+    if (result.success) {
+      // Update local state based on plugin result
+      button.state = result.newState !== undefined ? result.newState : state;
+      if (speedLevel !== undefined) {
+        button.speedLevel = speedLevel;
+      }
+      upsertDevice(device);
+      return { success: true, state: button.state };
+    } else {
+      console.error(`[Action] Plugin action failed: ${result.error}`);
+      return { success: false, state: button.state, error: result.error };
+    }
+  }
+
+  // Legacy behavior for buttons without bindings
+  button.state = state;
+  if (speedLevel !== undefined) {
+    button.speedLevel = speedLevel;
+  }
+  upsertDevice(device);
+  return { success: true, state };
+}
+
 // POST /api/action/light/:buttonId - Light button pressed (called by ESP32)
-router.post('/light/:buttonId', (req: Request, res: Response) => {
+router.post('/light/:buttonId', async (req: Request, res: Response) => {
   const buttonId = parseInt(req.params.buttonId);
   const { deviceId, state, timestamp } = req.body;
 
   console.log(`[Action] Light ${buttonId} on device ${deviceId} -> ${state ? 'ON' : 'OFF'}`);
 
-  // Update device config state (optional, device already tracks this)
-  const device = getDevice(deviceId);
-  if (device) {
-    const button = device.config.buttons.find(b => b.id === buttonId);
-    if (button) {
-      button.state = state;
-    }
-  }
-
-  // Here you would trigger any automations, webhooks to Home Assistant, etc.
-  // For now, just acknowledge
-  res.json({ success: true, buttonId, state });
+  const result = await handleButtonAction(buttonId, deviceId, state, timestamp);
+  res.json({ buttonId, ...result });
 });
 
 // POST /api/action/switch/:buttonId - Switch button pressed (called by ESP32)
-router.post('/switch/:buttonId', (req: Request, res: Response) => {
+router.post('/switch/:buttonId', async (req: Request, res: Response) => {
   const buttonId = parseInt(req.params.buttonId);
   const { deviceId, state, timestamp } = req.body;
 
   console.log(`[Action] Switch ${buttonId} on device ${deviceId} -> ${state ? 'ON' : 'OFF'}`);
 
-  const device = getDevice(deviceId);
-  if (device) {
-    const button = device.config.buttons.find(b => b.id === buttonId);
-    if (button) {
-      button.state = state;
-    }
-  }
+  const result = await handleButtonAction(buttonId, deviceId, state, timestamp);
+  res.json({ buttonId, ...result });
+});
 
-  res.json({ success: true, buttonId, state });
+// POST /api/action/fan/:buttonId - Fan button pressed (called by ESP32)
+router.post('/fan/:buttonId', async (req: Request, res: Response) => {
+  const buttonId = parseInt(req.params.buttonId);
+  const { deviceId, state, speedLevel, timestamp } = req.body;
+
+  console.log(`[Action] Fan ${buttonId} on device ${deviceId} -> ${state ? 'ON' : 'OFF'}, speed: ${speedLevel}`);
+
+  const result = await handleButtonAction(buttonId, deviceId, state, timestamp, speedLevel);
+  res.json({ buttonId, speedLevel, ...result });
 });
 
 // POST /api/action/scene/:sceneId - Scene activated (called by ESP32)

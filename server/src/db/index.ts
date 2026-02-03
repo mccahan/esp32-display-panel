@@ -1,9 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { ButtonBinding } from '../plugins/types';
 
 // Data directory path
 const DATA_DIR = path.join(__dirname, '../../data');
 const DEVICES_FILE = path.join(DATA_DIR, 'devices.json');
+
+// Re-export ButtonBinding for convenience
+export { ButtonBinding } from '../plugins/types';
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -42,11 +46,15 @@ export interface DayNightConfig {
 // Button configuration
 export interface ButtonConfig {
   id: number;
-  type: 'light' | 'switch';
+  type: 'light' | 'switch' | 'fan';
   name: string;
   icon: string;
   state: boolean;
   subtitle?: string;  // For LCARS
+  speedSteps?: number;  // For fans
+  speedLevel?: number;  // Current fan speed (0-100)
+  // Plugin binding for external device control
+  binding?: ButtonBinding;
 }
 
 // Scene configuration

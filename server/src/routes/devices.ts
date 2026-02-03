@@ -2,8 +2,10 @@ import { Router, Request, Response } from 'express';
 import {
   getAllDevices,
   getDevice,
+  upsertDevice,
   deleteDevice as dbDeleteDevice,
-  Device
+  Device,
+  ButtonBinding
 } from '../db';
 import {
   pushConfigToDevice,
@@ -232,6 +234,89 @@ router.post('/:id/theme', async (req: Request, res: Response) => {
     }
   } catch (error) {
     res.status(503).json({ error: 'Device offline or unreachable' });
+  }
+});
+
+// ============================================================================
+// Button Binding Endpoints
+// ============================================================================
+
+// GET /api/devices/:deviceId/buttons/:buttonId/binding - Get button binding
+router.get('/:deviceId/buttons/:buttonId/binding', (req: Request, res: Response) => {
+  const device = getDevice(req.params.deviceId);
+  if (!device) {
+    return res.status(404).json({ error: 'Device not found' });
+  }
+
+  const buttonId = parseInt(req.params.buttonId);
+  const button = device.config.buttons.find(b => b.id === buttonId);
+  if (!button) {
+    return res.status(404).json({ error: 'Button not found' });
+  }
+
+  if (button.binding) {
+    res.json(button.binding);
+  } else {
+    res.json(null);
+  }
+});
+
+// POST /api/devices/:deviceId/buttons/:buttonId/binding - Create/update button binding
+router.post('/:deviceId/buttons/:buttonId/binding', (req: Request, res: Response) => {
+  const device = getDevice(req.params.deviceId);
+  if (!device) {
+    return res.status(404).json({ error: 'Device not found' });
+  }
+
+  const buttonId = parseInt(req.params.buttonId);
+  const button = device.config.buttons.find(b => b.id === buttonId);
+  if (!button) {
+    return res.status(404).json({ error: 'Button not found' });
+  }
+
+  const { pluginId, externalDeviceId, deviceType, metadata } = req.body;
+
+  if (!pluginId || !externalDeviceId || !deviceType) {
+    return res.status(400).json({
+      error: 'Missing required fields: pluginId, externalDeviceId, deviceType'
+    });
+  }
+
+  const binding: ButtonBinding = {
+    pluginId,
+    externalDeviceId,
+    deviceType,
+    metadata: metadata || {}
+  };
+
+  button.binding = binding;
+  upsertDevice(device);
+
+  res.json({
+    success: true,
+    binding: button.binding
+  });
+});
+
+// DELETE /api/devices/:deviceId/buttons/:buttonId/binding - Remove button binding
+router.delete('/:deviceId/buttons/:buttonId/binding', (req: Request, res: Response) => {
+  const device = getDevice(req.params.deviceId);
+  if (!device) {
+    return res.status(404).json({ error: 'Device not found' });
+  }
+
+  const buttonId = parseInt(req.params.buttonId);
+  const button = device.config.buttons.find(b => b.id === buttonId);
+  if (!button) {
+    return res.status(404).json({ error: 'Button not found' });
+  }
+
+  if (button.binding) {
+    delete button.binding;
+    upsertDevice(device);
+    res.json({ success: true, message: 'Binding removed' });
+  } else {
+    res.json({ success: true, message: 'No binding to remove' });
   }
 });
 

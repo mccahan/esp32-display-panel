@@ -380,6 +380,82 @@
       margin-bottom: 10px;
       justify-content: center;
     }
+
+    /* Plugin styles */
+    .plugin-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: #16213e;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border: 2px solid #2a2a4a;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .plugin-item:hover { border-color: #00d4ff; }
+    .plugin-item.selected { border-color: #00d4ff; background: #1a2744; }
+    .plugin-info .name { font-weight: 600; margin-bottom: 4px; }
+    .plugin-info .description { color: #888; font-size: 0.85em; }
+    .plugin-status {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.75em;
+      font-weight: 500;
+    }
+    .plugin-status.enabled { background: #0f5132; color: #75b798; }
+    .plugin-status.disabled { background: #2a2a4a; color: #888; }
+
+    .external-device-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: #0f0f1a;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      border: 1px solid #2a2a4a;
+    }
+    .external-device-info { flex: 1; }
+    .external-device-info .name { font-weight: 500; }
+    .external-device-info .details { color: #888; font-size: 0.85em; margin-top: 2px; }
+    .external-device-type {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75em;
+      background: #2a2a4a;
+      color: #888;
+      margin-right: 10px;
+    }
+
+    /* Button binding styles */
+    .binding-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      background: #0f5132;
+      border-radius: 6px;
+      font-size: 0.75em;
+      color: #75b798;
+      cursor: pointer;
+    }
+    .binding-indicator:hover { background: #0a3d24; }
+    .binding-indicator.unbound {
+      background: #2a2a4a;
+      color: #666;
+    }
+    .binding-indicator.unbound:hover { background: #3a3a5a; color: #888; }
+
+    .modal-lg { max-width: 700px; }
+    .modal-content h3 {
+      color: #888;
+      font-size: 0.9em;
+      margin: 15px 0 10px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #2a2a4a;
+    }
   </style>
 </head>
 <body>
@@ -394,6 +470,7 @@
     <div class="tabs">
       <div class="tab active" data-tab="devices">Devices</div>
       <div class="tab" data-tab="discover">Discover</div>
+      <div class="tab" data-tab="plugins">Plugins</div>
     </div>
 
     <!-- Devices Tab -->
@@ -444,6 +521,16 @@
                 <button class="btn btn-sm btn-secondary" onclick="addButton()">+ Add Button</button>
               </div>
               <div class="button-list" id="button-list"></div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">
+                Import External Devices
+                <button class="btn btn-sm btn-primary" onclick="discoverImportableDevices()">Discover Devices</button>
+              </div>
+              <div id="importable-devices-list">
+                <div class="empty-state" style="padding: 15px; color: #666;">Click "Discover Devices" to find devices from enabled plugins</div>
+              </div>
             </div>
 
             <div class="section">
@@ -501,6 +588,48 @@
         </div>
       </div>
     </div>
+
+    <!-- Plugins Tab -->
+    <div id="tab-plugins" class="hidden">
+      <div class="main-layout">
+        <!-- Plugin List -->
+        <div>
+          <div class="card">
+            <h2>Installed Plugins</h2>
+            <div id="plugin-list">
+              <div class="empty-state">Loading plugins...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Plugin Configuration -->
+        <div id="plugin-config" class="hidden">
+          <div class="card">
+            <h2 id="plugin-config-title">Plugin Configuration</h2>
+            <div id="plugin-config-form"></div>
+            <div class="actions">
+              <button class="btn btn-secondary" onclick="testPluginConnection()">Test Connection</button>
+              <button class="btn btn-success" onclick="savePluginConfig()">Save Configuration</button>
+            </div>
+          </div>
+
+          <div class="card" id="plugin-devices-card" class="hidden">
+            <h2>Discovered Devices</h2>
+            <button class="btn btn-primary btn-sm" onclick="discoverPluginDevices()" style="margin-bottom: 15px;">Refresh Devices</button>
+            <div id="plugin-devices-list">
+              <div class="empty-state">Click "Refresh Devices" to discover devices</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="no-plugin-selected" class="card">
+          <div class="empty-state">
+            <p style="font-size: 1.2em; margin-bottom: 10px;">Select a plugin</p>
+            <p>Choose a plugin from the list to configure it and discover external devices.</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Adopt Modal -->
@@ -518,6 +647,68 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeAdoptModal()">Cancel</button>
         <button class="btn btn-primary" onclick="confirmAdopt()">Adopt Device</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Device Modal (for binding existing buttons) -->
+  <div id="import-modal" class="modal hidden">
+    <div class="modal-content modal-lg">
+      <h2>Import External Device</h2>
+      <p style="color: #888; margin-bottom: 15px;">
+        Select an external device to bind to this button. When the button is pressed, it will control the selected device.
+      </p>
+      <div class="form-group">
+        <label>Plugin</label>
+        <select id="import-plugin" onchange="loadImportDevices()">
+          <option value="">Select a plugin...</option>
+        </select>
+      </div>
+      <h3>Available Devices</h3>
+      <div id="import-devices-list">
+        <div class="empty-state">Select a plugin to see available devices</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Button from Import Modal -->
+  <div id="create-button-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Create Button from External Device</h2>
+      <div class="form-group">
+        <label>Button Name</label>
+        <input type="text" id="create-button-name" placeholder="e.g., Living Room Light">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Button Type</label>
+          <select id="create-button-type">
+            <option value="light">Light</option>
+            <option value="switch">Switch</option>
+            <option value="fan">Fan</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Icon</label>
+          <select id="create-button-icon">
+            <option value="charge">Light</option>
+            <option value="fan">Fan</option>
+            <option value="power">Power</option>
+            <option value="home">Home</option>
+            <option value="settings">Gear</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Bound Device</label>
+        <div id="create-button-binding-info" style="padding: 10px; background: #0f0f1a; border-radius: 6px; color: #75b798; font-size: 0.9em;"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeCreateButtonModal()">Cancel</button>
+        <button class="btn btn-success" onclick="confirmCreateButton()">Create Button</button>
       </div>
     </div>
   </div>
@@ -544,9 +735,13 @@
 
         document.getElementById('tab-devices').classList.toggle('hidden', tab.dataset.tab !== 'devices');
         document.getElementById('tab-discover').classList.toggle('hidden', tab.dataset.tab !== 'discover');
+        document.getElementById('tab-plugins').classList.toggle('hidden', tab.dataset.tab !== 'plugins');
 
         if (tab.dataset.tab === 'discover') {
           loadDiscoveredDevices();
+        }
+        if (tab.dataset.tab === 'plugins') {
+          loadPlugins();
         }
       });
     });
@@ -694,11 +889,16 @@
       renderButtonList();
     }
 
+    function getBindingLabel(binding) {
+      if (!binding) return 'No binding';
+      return `${binding.pluginId}: ${binding.externalDeviceId.substring(0, 12)}...`;
+    }
+
     function renderButtonList() {
       if (!selectedDevice) return;
       const buttonList = document.getElementById('button-list');
       buttonList.innerHTML = selectedDevice.config.buttons.map((btn, i) => `
-        <div class="button-item" style="grid-template-columns: 50px 1fr 80px 80px ${btn.type === 'fan' ? '70px' : ''} 36px;">
+        <div class="button-item" style="grid-template-columns: 50px 1fr 80px 80px ${btn.type === 'fan' ? '70px' : ''} auto 36px;">
           <div class="button-status ${getStatusClass(btn)}" onclick="toggleButtonState(${i})" title="Click to toggle">
             ${getStatusText(btn)}
           </div>
@@ -723,6 +923,9 @@
             <option value="5" ${(btn.speedSteps || 0) === 5 ? 'selected' : ''}>5 Speed</option>
           </select>
           ` : ''}
+          <div class="binding-indicator ${btn.binding ? '' : 'unbound'}" onclick="openImportModal(${btn.id})" title="${btn.binding ? 'Click to change binding' : 'Click to bind external device'}">
+            ${btn.binding ? '🔗 Bound' : '+ Bind'}
+          </div>
           <button class="btn btn-sm btn-danger" onclick="removeButton(${i})" ${selectedDevice.config.buttons.length <= 2 ? 'disabled' : ''}>×</button>
         </div>
       `).join('');
@@ -966,6 +1169,490 @@
         showToast('Failed to adopt device', 'error');
         console.error(error);
       }
+    }
+
+    // ========================================
+    // Plugin Management
+    // ========================================
+    let plugins = [];
+    let selectedPlugin = null;
+    let importingButtonId = null;
+    let importDevices = [];
+
+    async function loadPlugins() {
+      try {
+        const response = await fetch('/api/plugins');
+        plugins = await response.json();
+        renderPluginList();
+      } catch (error) {
+        console.error('Failed to load plugins:', error);
+      }
+    }
+
+    function renderPluginList() {
+      const list = document.getElementById('plugin-list');
+      if (plugins.length === 0) {
+        list.innerHTML = '<div class="empty-state">No plugins installed</div>';
+        return;
+      }
+
+      list.innerHTML = plugins.map(p => `
+        <div class="plugin-item ${selectedPlugin?.id === p.id ? 'selected' : ''}" onclick="selectPlugin('${p.id}')">
+          <div class="plugin-info">
+            <div class="name">${p.name}</div>
+            <div class="description">${p.description || p.type}</div>
+          </div>
+          <span class="plugin-status ${p.enabled ? 'enabled' : 'disabled'}">${p.enabled ? 'Enabled' : 'Disabled'}</span>
+        </div>
+      `).join('');
+    }
+
+    async function selectPlugin(id) {
+      try {
+        const response = await fetch(`/api/plugins/${id}`);
+        selectedPlugin = await response.json();
+
+        document.getElementById('plugin-config').classList.remove('hidden');
+        document.getElementById('no-plugin-selected').classList.add('hidden');
+        document.getElementById('plugin-config-title').textContent = `${selectedPlugin.name} Configuration`;
+
+        renderPluginConfigForm();
+        renderPluginList();
+
+        // Show devices card only for device providers
+        const devicesCard = document.getElementById('plugin-devices-card');
+        if (selectedPlugin.hasDeviceDiscovery) {
+          devicesCard.classList.remove('hidden');
+        } else {
+          devicesCard.classList.add('hidden');
+        }
+      } catch (error) {
+        console.error('Failed to load plugin:', error);
+        showToast('Failed to load plugin', 'error');
+      }
+    }
+
+    function renderPluginConfigForm() {
+      if (!selectedPlugin) return;
+
+      const form = document.getElementById('plugin-config-form');
+
+      // Build form based on plugin type
+      let settingsHtml = '';
+
+      if (selectedPlugin.id === 'homebridge') {
+        const settings = selectedPlugin.settings || {};
+        settingsHtml = `
+          <div class="form-group">
+            <label>Server URL</label>
+            <input type="text" id="plugin-setting-serverUrl" value="${settings.serverUrl || ''}" placeholder="https://homebridge.example.com">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Username</label>
+              <input type="text" id="plugin-setting-username" value="${settings.username || ''}" placeholder="admin">
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="plugin-setting-password" value="${settings.password || ''}" placeholder="password">
+            </div>
+          </div>
+        `;
+      }
+
+      form.innerHTML = `
+        <div class="form-group">
+          <label>Enabled</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="plugin-enabled" ${selectedPlugin.enabled ? 'checked' : ''}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        ${settingsHtml}
+      `;
+    }
+
+    async function savePluginConfig() {
+      if (!selectedPlugin) return;
+
+      const enabled = document.getElementById('plugin-enabled').checked;
+      const settings = {};
+
+      // Collect settings based on plugin type
+      if (selectedPlugin.id === 'homebridge') {
+        settings.serverUrl = document.getElementById('plugin-setting-serverUrl').value;
+        settings.username = document.getElementById('plugin-setting-username').value;
+        settings.password = document.getElementById('plugin-setting-password').value;
+      }
+
+      try {
+        const response = await fetch(`/api/plugins/${selectedPlugin.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled, settings })
+        });
+
+        if (response.ok) {
+          showToast('Plugin configuration saved', 'success');
+          await loadPlugins();
+          await selectPlugin(selectedPlugin.id);
+        } else {
+          const error = await response.json();
+          showToast(error.error || 'Failed to save configuration', 'error');
+        }
+      } catch (error) {
+        showToast('Failed to save configuration', 'error');
+        console.error(error);
+      }
+    }
+
+    async function testPluginConnection() {
+      if (!selectedPlugin) return;
+
+      const settings = {};
+      if (selectedPlugin.id === 'homebridge') {
+        settings.serverUrl = document.getElementById('plugin-setting-serverUrl').value;
+        settings.username = document.getElementById('plugin-setting-username').value;
+        settings.password = document.getElementById('plugin-setting-password').value;
+      }
+
+      showToast('Testing connection...', 'info');
+
+      try {
+        const response = await fetch(`/api/plugins/${selectedPlugin.id}/test`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ settings })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          showToast(result.message, 'success');
+        } else {
+          showToast(result.message || 'Connection failed', 'error');
+        }
+      } catch (error) {
+        showToast('Connection test failed', 'error');
+        console.error(error);
+      }
+    }
+
+    async function discoverPluginDevices() {
+      if (!selectedPlugin) return;
+
+      const list = document.getElementById('plugin-devices-list');
+      list.innerHTML = '<div class="empty-state">Discovering devices...</div>';
+
+      try {
+        const response = await fetch(`/api/plugins/${selectedPlugin.id}/devices`);
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to discover devices');
+        }
+
+        const devices = await response.json();
+        if (devices.length === 0) {
+          list.innerHTML = '<div class="empty-state">No devices found</div>';
+          return;
+        }
+
+        list.innerHTML = devices.map(d => `
+          <div class="external-device-item">
+            <div class="external-device-info">
+              <div class="name">${d.name}</div>
+              <div class="details">${d.room || 'No room'} | ${d.id.substring(0, 20)}...</div>
+            </div>
+            <span class="external-device-type">${d.type}</span>
+          </div>
+        `).join('');
+      } catch (error) {
+        list.innerHTML = `<div class="empty-state" style="color: #ea868f;">${error.message}</div>`;
+        console.error(error);
+      }
+    }
+
+    // ========================================
+    // Button Binding / Import
+    // ========================================
+
+    async function openImportModal(buttonId) {
+      importingButtonId = buttonId;
+
+      // Load available plugins
+      try {
+        const response = await fetch('/api/plugins');
+        const allPlugins = await response.json();
+        const providers = allPlugins.filter(p => p.hasDeviceDiscovery && p.enabled);
+
+        const select = document.getElementById('import-plugin');
+        select.innerHTML = '<option value="">Select a plugin...</option>' +
+          providers.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+
+        document.getElementById('import-devices-list').innerHTML =
+          '<div class="empty-state">Select a plugin to see available devices</div>';
+
+        document.getElementById('import-modal').classList.remove('hidden');
+      } catch (error) {
+        showToast('Failed to load plugins', 'error');
+        console.error(error);
+      }
+    }
+
+    function closeImportModal() {
+      document.getElementById('import-modal').classList.add('hidden');
+      importingButtonId = null;
+      importDevices = [];
+    }
+
+    async function loadImportDevices() {
+      const pluginId = document.getElementById('import-plugin').value;
+      const list = document.getElementById('import-devices-list');
+
+      if (!pluginId) {
+        list.innerHTML = '<div class="empty-state">Select a plugin to see available devices</div>';
+        return;
+      }
+
+      list.innerHTML = '<div class="empty-state">Discovering devices...</div>';
+
+      try {
+        const response = await fetch(`/api/plugins/${pluginId}/devices`);
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to discover devices');
+        }
+
+        importDevices = await response.json();
+
+        if (importDevices.length === 0) {
+          list.innerHTML = '<div class="empty-state">No devices found</div>';
+          return;
+        }
+
+        list.innerHTML = importDevices.map((d, i) => `
+          <div class="external-device-item" style="cursor: pointer;" onclick="bindDevice(${i})">
+            <div class="external-device-info">
+              <div class="name">${d.name}</div>
+              <div class="details">${d.room || 'No room'}</div>
+            </div>
+            <span class="external-device-type">${d.type}</span>
+            <button class="btn btn-sm btn-primary">Import</button>
+          </div>
+        `).join('');
+      } catch (error) {
+        list.innerHTML = `<div class="empty-state" style="color: #ea868f;">${error.message}</div>`;
+        console.error(error);
+      }
+    }
+
+    async function bindDevice(deviceIndex) {
+      if (!selectedDevice || importingButtonId === null) return;
+
+      const pluginId = document.getElementById('import-plugin').value;
+      const externalDevice = importDevices[deviceIndex];
+
+      try {
+        const response = await fetch(`/api/devices/${selectedDevice.id}/buttons/${importingButtonId}/binding`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pluginId,
+            externalDeviceId: externalDevice.id,
+            deviceType: externalDevice.type,
+            metadata: externalDevice.metadata || {}
+          })
+        });
+
+        if (response.ok) {
+          showToast(`Bound to ${externalDevice.name}`, 'success');
+          closeImportModal();
+
+          // Update local button data
+          const button = selectedDevice.config.buttons.find(b => b.id === importingButtonId);
+          if (button) {
+            button.binding = {
+              pluginId,
+              externalDeviceId: externalDevice.id,
+              deviceType: externalDevice.type,
+              metadata: externalDevice.metadata || {}
+            };
+            // Also update the button name to match the external device
+            button.name = externalDevice.name;
+            // Update type to match
+            if (['light', 'switch', 'fan', 'outlet'].includes(externalDevice.type)) {
+              button.type = externalDevice.type === 'outlet' ? 'switch' : externalDevice.type;
+            }
+          }
+          renderButtonList();
+        } else {
+          const error = await response.json();
+          showToast(error.error || 'Failed to create binding', 'error');
+        }
+      } catch (error) {
+        showToast('Failed to create binding', 'error');
+        console.error(error);
+      }
+    }
+
+    async function removeBinding(buttonId) {
+      if (!selectedDevice) return;
+      if (!confirm('Remove binding from this button?')) return;
+
+      try {
+        const response = await fetch(`/api/devices/${selectedDevice.id}/buttons/${buttonId}/binding`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          showToast('Binding removed', 'success');
+          const button = selectedDevice.config.buttons.find(b => b.id === buttonId);
+          if (button) {
+            delete button.binding;
+          }
+          renderButtonList();
+        }
+      } catch (error) {
+        showToast('Failed to remove binding', 'error');
+        console.error(error);
+      }
+    }
+
+    // ========================================
+    // Import Devices Feature
+    // ========================================
+    let importableDevices = [];  // { device, pluginId, pluginName }
+    let creatingButtonDevice = null;
+
+    async function discoverImportableDevices() {
+      if (!selectedDevice) return;
+
+      const list = document.getElementById('importable-devices-list');
+      list.innerHTML = '<div class="empty-state" style="padding: 15px;">Discovering devices from plugins...</div>';
+
+      try {
+        // Get all enabled device provider plugins
+        const pluginsResponse = await fetch('/api/plugins');
+        const allPlugins = await pluginsResponse.json();
+        const enabledProviders = allPlugins.filter(p => p.hasDeviceDiscovery && p.enabled);
+
+        if (enabledProviders.length === 0) {
+          list.innerHTML = '<div class="empty-state" style="padding: 15px; color: #888;">No plugins enabled. Go to the Plugins tab to configure integrations.</div>';
+          return;
+        }
+
+        importableDevices = [];
+
+        // Discover devices from each plugin
+        for (const plugin of enabledProviders) {
+          try {
+            const response = await fetch(`/api/plugins/${plugin.id}/devices`);
+            if (response.ok) {
+              const devices = await response.json();
+              for (const device of devices) {
+                importableDevices.push({
+                  device,
+                  pluginId: plugin.id,
+                  pluginName: plugin.name
+                });
+              }
+            }
+          } catch (e) {
+            console.error(`Failed to discover from ${plugin.name}:`, e);
+          }
+        }
+
+        if (importableDevices.length === 0) {
+          list.innerHTML = '<div class="empty-state" style="padding: 15px; color: #888;">No devices found from enabled plugins.</div>';
+          return;
+        }
+
+        list.innerHTML = importableDevices.map((item, i) => `
+          <div class="external-device-item">
+            <div class="external-device-info">
+              <div class="name">${item.device.name}</div>
+              <div class="details">${item.pluginName} | ${item.device.room || 'No room'}</div>
+            </div>
+            <span class="external-device-type">${item.device.type}</span>
+            <button class="btn btn-sm btn-primary" onclick="showCreateButtonModal(${i})">Import</button>
+          </div>
+        `).join('');
+      } catch (error) {
+        list.innerHTML = '<div class="empty-state" style="padding: 15px; color: #ea868f;">Failed to discover devices</div>';
+        console.error(error);
+      }
+    }
+
+    function showCreateButtonModal(deviceIndex) {
+      const item = importableDevices[deviceIndex];
+      if (!item) return;
+
+      creatingButtonDevice = item;
+
+      // Pre-populate form
+      document.getElementById('create-button-name').value = item.device.name;
+
+      // Map device type to button type
+      const typeMap = { light: 'light', switch: 'switch', fan: 'fan', outlet: 'switch' };
+      document.getElementById('create-button-type').value = typeMap[item.device.type] || 'light';
+
+      // Set icon based on type
+      const iconMap = { light: 'charge', switch: 'power', fan: 'fan', outlet: 'power' };
+      document.getElementById('create-button-icon').value = iconMap[item.device.type] || 'charge';
+
+      // Show binding info
+      document.getElementById('create-button-binding-info').innerHTML = `
+        <strong>${item.pluginName}</strong><br>
+        ${item.device.name}<br>
+        <span style="color: #888; font-size: 0.85em;">ID: ${item.device.id.substring(0, 30)}${item.device.id.length > 30 ? '...' : ''}</span>
+      `;
+
+      document.getElementById('create-button-modal').classList.remove('hidden');
+    }
+
+    function closeCreateButtonModal() {
+      document.getElementById('create-button-modal').classList.add('hidden');
+      creatingButtonDevice = null;
+    }
+
+    async function confirmCreateButton() {
+      if (!selectedDevice || !creatingButtonDevice) return;
+
+      const name = document.getElementById('create-button-name').value;
+      const type = document.getElementById('create-button-type').value;
+      const icon = document.getElementById('create-button-icon').value;
+
+      if (!name) {
+        showToast('Please enter a button name', 'error');
+        return;
+      }
+
+      if (selectedDevice.config.buttons.length >= 6) {
+        showToast('Maximum 6 buttons allowed', 'error');
+        return;
+      }
+
+      // Create new button with binding
+      const newId = Math.max(...selectedDevice.config.buttons.map(b => b.id), 0) + 1;
+      const newButton = {
+        id: newId,
+        type,
+        name,
+        icon,
+        state: false,
+        speedSteps: type === 'fan' ? 3 : 0,
+        speedLevel: 0,
+        binding: {
+          pluginId: creatingButtonDevice.pluginId,
+          externalDeviceId: creatingButtonDevice.device.id,
+          deviceType: creatingButtonDevice.device.type,
+          metadata: creatingButtonDevice.device.metadata || {}
+        }
+      };
+
+      selectedDevice.config.buttons.push(newButton);
+      renderButtonList();
+      closeCreateButtonModal();
+      showToast(`Created button "${name}" with ${creatingButtonDevice.pluginName} binding`, 'success');
     }
 
     // Initial load
