@@ -30,7 +30,8 @@ private:
     bool isDayTime(uint8_t hour) const;
 
     // Apply theme change
-    void applyTheme(const String& themeName);
+    // triggerRebuild: if false, just sets theme without requesting UI rebuild
+    void applyTheme(const String& themeName, bool triggerRebuild = true);
 };
 
 // Global instance

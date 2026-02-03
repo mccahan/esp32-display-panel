@@ -14,7 +14,36 @@ ThemeScheduler::ThemeScheduler()
 
 void ThemeScheduler::begin() {
     Serial.println("ThemeScheduler: Initializing...");
-    refresh();
+
+    const DayNightConfig& config = configManager.getConfig().display.dayNight;
+
+    if (!config.enabled) {
+        Serial.println("ThemeScheduler: Disabled");
+        initialized = false;
+        return;
+    }
+
+    Serial.printf("ThemeScheduler: Enabled - Day theme: %s (starts %d:00), Night theme: %s (starts %d:00)\n",
+        config.dayTheme.c_str(), config.dayStartHour,
+        config.nightTheme.c_str(), config.nightStartHour);
+
+    // If time is synced, apply the correct theme and trigger rebuild
+    // (on boot, UI was already created with potentially wrong theme)
+    if (timeManager.isSynced()) {
+        uint8_t hour = timeManager.getCurrentHour();
+        bool isDay = isDayTime(hour);
+        const String& targetTheme = isDay ? config.dayTheme : config.nightTheme;
+
+        Serial.printf("ThemeScheduler: Current hour %d is %s time, applying %s theme\n",
+            hour, isDay ? "day" : "night", targetTheme.c_str());
+
+        applyTheme(targetTheme, true);  // true = trigger rebuild on boot
+        wasNightTime = !isDay;
+        initialized = true;
+    } else {
+        Serial.println("ThemeScheduler: NTP not synced yet, will apply theme when synced");
+        initialized = false;
+    }
 }
 
 bool ThemeScheduler::update() {
@@ -78,6 +107,7 @@ void ThemeScheduler::refresh() {
     currentAppliedTheme = "";
 
     // If time is synced, immediately apply the correct theme
+    // Don't trigger rebuild here - caller (web_server) already requested it
     if (timeManager.isSynced()) {
         uint8_t hour = timeManager.getCurrentHour();
         bool isDay = isDayTime(hour);
@@ -86,7 +116,7 @@ void ThemeScheduler::refresh() {
         Serial.printf("ThemeScheduler: Current hour %d is %s time, applying %s theme\n",
             hour, isDay ? "day" : "night", targetTheme.c_str());
 
-        applyTheme(targetTheme);
+        applyTheme(targetTheme, false);  // false = don't trigger rebuild
         wasNightTime = !isDay;
         initialized = true;
     } else {
@@ -119,14 +149,16 @@ bool ThemeScheduler::isDayTime(uint8_t hour) const {
     }
 }
 
-void ThemeScheduler::applyTheme(const String& themeName) {
+void ThemeScheduler::applyTheme(const String& themeName, bool triggerRebuild) {
     Serial.printf("ThemeScheduler: Setting theme to %s\n", themeName.c_str());
 
     // Set the theme in the theme engine
     if (themeEngine.setTheme(themeName)) {
         currentAppliedTheme = themeName;
-        // Request UI rebuild to apply the new theme
-        uiManager.requestRebuild();
+        // Request UI rebuild to apply the new theme (unless caller handles it)
+        if (triggerRebuild) {
+            uiManager.requestRebuild();
+        }
     } else {
         Serial.printf("ThemeScheduler: WARNING - Failed to set theme %s\n", themeName.c_str());
     }

@@ -339,14 +339,13 @@ void DisplayWebServer::setupRoutes() {
                 if (configManager.parseConfigJson(configBodyBuffer)) {
                     configManager.saveConfig();
 
+                    // Refresh schedulers BEFORE requesting rebuild so theme/brightness
+                    // are set correctly when the UI rebuilds
+                    brightnessScheduler.refresh();
+                    themeScheduler.refresh();
+
                     // Request UI rebuild (will be done in main loop for thread safety)
                     uiManager.requestRebuild();
-
-                    // Refresh brightness scheduler with new config
-                    brightnessScheduler.refresh();
-
-                    // Refresh theme scheduler with new config
-                    themeScheduler.refresh();
 
                     request->send(200, "application/json", "{\"success\":true,\"message\":\"Config applied\"}");
                 } else {

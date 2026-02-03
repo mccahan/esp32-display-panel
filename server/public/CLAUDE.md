@@ -8,15 +8,11 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #482 | 11:07 PM | 🔵 | Web Dashboard HTML Structure and Styling | ~431 |
-| #288 | 8:43 PM | 🔵 | Moon and sun icon options added to button icon selector | ~324 |
 
 ### Feb 3, 2026
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #879 | 2:24 PM | 🟣 | Push Button Added for Auto Light/Dark Theme Schedule Deployment | ~401 |
-| #870 | 2:17 PM | ✅ | Removed Theme Schedule Enabled Toggle from JavaScript Loading Logic | ~339 |
-| #850 | 2:05 PM | ✅ | Simplified Auto Light/Dark Theme UI in Settings Panel | ~336 |
 | #829 | 1:50 PM | 🔵 | Device Config Save Function Updates Server and Pushes to ESP32 | ~361 |
 | #827 | 1:49 PM | 🔵 | Settings Tab Structure Revealed - Single Panel Layout | ~348 |
 | #817 | 1:46 PM | 🔵 | Web-Based Settings UI Found in Server's HTML Interface | ~400 |
