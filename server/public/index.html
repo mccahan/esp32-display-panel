@@ -2473,22 +2473,20 @@
         document.getElementById('no-plugin-selected').classList.add('hidden');
         document.getElementById('plugin-config-title').textContent = `${selectedPlugin.name} Configuration`;
 
-        renderPluginConfigForm();
         renderPluginList();
 
-        // Load plugin custom UI if available
+        // Load plugin custom UI first (so renderSettings function is available)
         await loadPluginUI(selectedPlugin.id);
 
-        // Show devices card for device providers without custom UI
-        const devicesCard = document.getElementById('plugin-devices-card');
-        const customUIContainer = document.getElementById('plugin-custom-ui');
-        const hasCustomUI = !customUIContainer.classList.contains('hidden');
+        // Now render the config form (may use plugin-provided renderSettings)
+        renderPluginConfigForm();
 
-        if (hasCustomUI) {
-          // Plugin has custom UI, hide device discovery
-          devicesCard.classList.add('hidden');
-        } else if (selectedPlugin.hasDeviceDiscovery) {
+        // Show devices card if plugin supports device discovery
+        const devicesCard = document.getElementById('plugin-devices-card');
+        if (selectedPlugin.hasDeviceDiscovery) {
           devicesCard.classList.remove('hidden');
+          // Auto-refresh devices when loading plugin config
+          discoverPluginDevices();
         } else {
           devicesCard.classList.add('hidden');
         }
@@ -2532,27 +2530,11 @@
 
       const form = document.getElementById('plugin-config-form');
 
-      // Build form based on plugin type
+      // Check if plugin provides custom settings UI
       let settingsHtml = '';
-
-      if (selectedPlugin.id === 'homebridge') {
-        const settings = selectedPlugin.settings || {};
-        settingsHtml = `
-          <div class="form-group">
-            <label>Server URL</label>
-            <input type="text" id="plugin-setting-serverUrl" value="${settings.serverUrl || ''}" placeholder="https://homebridge.example.com">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Username</label>
-              <input type="text" id="plugin-setting-username" value="${settings.username || ''}" placeholder="admin">
-            </div>
-            <div class="form-group">
-              <label>Password</label>
-              <input type="password" id="plugin-setting-password" value="${settings.password || ''}" placeholder="password">
-            </div>
-          </div>
-        `;
+      const pluginUI = window[selectedPlugin.id.replace(/-/g, '') + 'UI'] || window[selectedPlugin.id + 'UI'];
+      if (pluginUI && typeof pluginUI.renderSettings === 'function') {
+        settingsHtml = pluginUI.renderSettings(selectedPlugin.settings || {});
       }
 
       form.innerHTML = `
@@ -2573,15 +2555,11 @@
       const enabled = document.getElementById('plugin-enabled').checked;
       let settings = null;
 
-      // Collect settings based on plugin type
-      if (selectedPlugin.id === 'homebridge') {
-        settings = {
-          serverUrl: document.getElementById('plugin-setting-serverUrl').value,
-          username: document.getElementById('plugin-setting-username').value,
-          password: document.getElementById('plugin-setting-password').value
-        };
+      // Check if plugin provides custom getSettings function
+      const pluginUI = window[selectedPlugin.id.replace(/-/g, '') + 'UI'] || window[selectedPlugin.id + 'UI'];
+      if (pluginUI && typeof pluginUI.getSettings === 'function') {
+        settings = pluginUI.getSettings();
       }
-      // For timed-devices, don't send settings - they're managed separately via the custom UI
 
       // Build request body - only include settings if we have plugin-specific ones to save
       const body = { enabled };
@@ -2613,11 +2591,11 @@
     async function testPluginConnection() {
       if (!selectedPlugin) return;
 
-      const settings = {};
-      if (selectedPlugin.id === 'homebridge') {
-        settings.serverUrl = document.getElementById('plugin-setting-serverUrl').value;
-        settings.username = document.getElementById('plugin-setting-username').value;
-        settings.password = document.getElementById('plugin-setting-password').value;
+      // Check if plugin provides custom getSettings function
+      let settings = {};
+      const pluginUI = window[selectedPlugin.id.replace(/-/g, '') + 'UI'] || window[selectedPlugin.id + 'UI'];
+      if (pluginUI && typeof pluginUI.getSettings === 'function') {
+        settings = pluginUI.getSettings();
       }
 
       showToast('Testing connection...', 'info');
