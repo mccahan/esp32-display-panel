@@ -30,6 +30,35 @@ String DisplayWebServer::getIPAddress() {
 void DisplayWebServer::setupOTA() {
     // ElegantOTA provides a nice web UI for firmware updates
     ElegantOTA.begin(&server);
+
+    // OTA progress callbacks
+    ElegantOTA.onStart([]() {
+        Serial.println("\n========================================");
+        Serial.println("OTA Update Started");
+        Serial.println("========================================");
+    });
+
+    ElegantOTA.onProgress([](size_t current, size_t total) {
+        static int lastPercent = -1;
+        int percent = (current * 100) / total;
+        // Only print every 10%
+        if (percent / 10 != lastPercent / 10) {
+            lastPercent = percent;
+            Serial.printf("OTA Progress: %d%% (%u / %u bytes)\n", percent, current, total);
+        }
+    });
+
+    ElegantOTA.onEnd([](bool success) {
+        Serial.println("\n========================================");
+        if (success) {
+            Serial.println("OTA Update Complete!");
+            Serial.println("Rebooting in 1 second...");
+        } else {
+            Serial.println("OTA Update FAILED!");
+        }
+        Serial.println("========================================\n");
+    });
+
     Serial.println("OTA updates available at /update");
 }
 

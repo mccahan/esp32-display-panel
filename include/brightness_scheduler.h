@@ -42,7 +42,10 @@ private:
     uint8_t currentScheduledBrightness;
     uint8_t lastAppliedBrightness;
     unsigned long wakeStartTime;
+    unsigned long wakeGraceEndTime;  // Block buttons until this time (500ms after wake)
     int8_t currentPeriodIndex;
+
+    static const unsigned long WAKE_GRACE_PERIOD_MS = 500;
 
     // Find which period should be active for the given time
     int8_t findActivePeriod(uint8_t hour, uint8_t minute) const;

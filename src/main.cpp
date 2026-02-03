@@ -119,6 +119,12 @@ void my_touchpad_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
             return;
         }
 
+        // Also block during wake grace period (500ms after display wakes)
+        if (brightnessScheduler.shouldBlockButtons()) {
+            data->state = LV_INDEV_STATE_RELEASED;
+            return;
+        }
+
         data->state = LV_INDEV_STATE_PRESSED;
 
         // Raw touch coordinates from GT911

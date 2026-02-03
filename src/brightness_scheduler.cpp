@@ -10,6 +10,7 @@ BrightnessScheduler::BrightnessScheduler()
     , currentScheduledBrightness(80)
     , lastAppliedBrightness(255)  // Invalid value to force initial update
     , wakeStartTime(0)
+    , wakeGraceEndTime(0)
     , currentPeriodIndex(-1) {
 }
 
@@ -26,8 +27,19 @@ bool BrightnessScheduler::update() {
         return false;
     }
 
-    // Check if time is synced
+    // Skip if no periods configured
+    if (schedule.periodCount == 0) {
+        return false;
+    }
+
+    // Check if time is synced - if not, use default 50% brightness
     if (!timeManager.isSynced()) {
+        if (lastAppliedBrightness != 50) {
+            Serial.println("BrightnessScheduler: NTP not synced, using default 50% brightness");
+            applyBrightness(50);
+            lastAppliedBrightness = 50;
+            return true;
+        }
         return false;
     }
 
@@ -39,6 +51,8 @@ bool BrightnessScheduler::update() {
         if (elapsed >= (schedule.displayTimeout * 1000UL)) {
             Serial.println("BrightnessScheduler: Wake timeout, returning to schedule");
             state = SchedulerState::SCHEDULED;
+            // Force brightness reapply by invalidating lastAppliedBrightness
+            lastAppliedBrightness = 255;
         }
     }
 
@@ -86,9 +100,11 @@ bool BrightnessScheduler::onTouchDetected() {
     // If display is very dim (<=5%), wake it up and block the button action
     // This works even if NTP hasn't synced yet
     if (actualBrightness <= 5) {
-        Serial.printf("BrightnessScheduler: Touch detected at %d%% brightness, waking display\n", actualBrightness);
+        Serial.printf("BrightnessScheduler: Touch detected at %d%% brightness, waking display (blocking for %lums)\n",
+            actualBrightness, WAKE_GRACE_PERIOD_MS);
         state = SchedulerState::AWAKE;
         wakeStartTime = millis();
+        wakeGraceEndTime = millis() + WAKE_GRACE_PERIOD_MS;  // Block buttons for 500ms
 
         // Apply wake brightness immediately
         applyBrightness(schedule.touchBrightness);
@@ -112,6 +128,11 @@ bool BrightnessScheduler::shouldBlockButtons() const {
         return false;
     }
 
+    // Block buttons during wake grace period (500ms after display wakes from 0%)
+    if (millis() < wakeGraceEndTime) {
+        return true;
+    }
+
     // Block buttons when actual brightness is very low (<=5%)
     return uiManager.getBrightness() <= 5;
 }
@@ -125,6 +146,11 @@ uint8_t BrightnessScheduler::getTargetBrightness() const {
 
     if (state == SchedulerState::AWAKE) {
         return schedule.touchBrightness;
+    }
+
+    // If NTP not synced yet, use default 50%
+    if (!timeManager.isSynced()) {
+        return 50;
     }
 
     return currentScheduledBrightness;
@@ -153,11 +179,35 @@ void BrightnessScheduler::refresh() {
     Serial.printf("BrightnessScheduler: Enabled with %d periods, timeout=%ds\n",
         schedule.periodCount, schedule.displayTimeout);
 
+    if (schedule.periodCount == 0) {
+        Serial.println("BrightnessScheduler: WARNING - No periods configured!");
+    }
+
     for (uint8_t i = 0; i < schedule.periodCount; i++) {
         Serial.printf("  Period %d: %s at %02d:%02d -> %d%%\n",
             i, schedule.periods[i].name.c_str(),
             schedule.periods[i].startHour, schedule.periods[i].startMinute,
             schedule.periods[i].brightness);
+    }
+
+    // If time is already synced, immediately find and apply the correct period
+    if (timeManager.isSynced() && schedule.periodCount > 0) {
+        uint8_t hour = timeManager.getCurrentHour();
+        uint8_t minute = timeManager.getCurrentMinute();
+        int8_t periodIndex = findActivePeriod(hour, minute);
+        if (periodIndex >= 0) {
+            currentPeriodIndex = periodIndex;
+            currentScheduledBrightness = schedule.periods[periodIndex].brightness;
+            Serial.printf("BrightnessScheduler: Initial period %d (%s), brightness=%d%%\n",
+                periodIndex, schedule.periods[periodIndex].name.c_str(), currentScheduledBrightness);
+            applyBrightness(currentScheduledBrightness);
+            lastAppliedBrightness = currentScheduledBrightness;
+        }
+    } else if (!timeManager.isSynced()) {
+        // NTP not synced yet, use default 50% brightness
+        Serial.println("BrightnessScheduler: NTP not synced, applying default 50% brightness");
+        applyBrightness(50);
+        lastAppliedBrightness = 50;
     }
 }
 

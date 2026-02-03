@@ -1,4 +1,5 @@
 #include "ui_manager.h"
+#include "brightness_scheduler.h"
 #include "lcars_elbow.h"
 #include "fan_icon.h"
 #include "garage_icon.h"
@@ -55,9 +56,14 @@ void UIManager::update() {
         rebuildFadeInProgress = true;
         rebuildFadeStep = 0;
 
-        // Store target brightness before fading
+        // Store target brightness before fading - use scheduled brightness if enabled
         const DeviceConfig& config = configManager.getConfig();
-        rebuildTargetBrightness = config.display.brightness;
+        if (config.display.schedule.enabled) {
+            // Use scheduled brightness (brightnessScheduler will determine the correct value)
+            rebuildTargetBrightness = brightnessScheduler.getTargetBrightness();
+        } else {
+            rebuildTargetBrightness = config.display.brightness;
+        }
 
         Serial.println("UIManager: Starting rebuild with brightness fade");
     }
