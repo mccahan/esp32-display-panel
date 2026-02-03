@@ -136,6 +136,41 @@ async function selectDevices(devices: DiscoveredDevice[]): Promise<DiscoveredDev
   });
 }
 
+// Poll device until it reboots (uptime < threshold)
+async function waitForReboot(ip: string, timeoutMs: number = 60000): Promise<boolean> {
+  const startTime = Date.now();
+  const pollInterval = 1000;
+  const uptimeThreshold = 15; // Device considered rebooted if uptime < 15s
+
+  // Wait a bit for device to go down first
+  await new Promise(r => setTimeout(r, 2000));
+
+  while (Date.now() - startTime < timeoutMs) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+      const response = await fetch(`http://${ip}/api/info`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.uptime_seconds < uptimeThreshold) {
+          return true; // Device has rebooted
+        }
+      }
+    } catch {
+      // Device not responding yet, keep polling
+    }
+
+    await new Promise(r => setTimeout(r, pollInterval));
+  }
+
+  return false; // Timeout
+}
+
 // Flash firmware to a single device
 async function flashDevice(device: DiscoveredDevice, firmwarePath: string, md5Hash: string): Promise<boolean> {
   const baseUrl = `http://${device.ip}`;
@@ -157,18 +192,36 @@ async function flashDevice(device: DiscoveredDevice, firmwarePath: string, md5Ha
     const formData = new FormData();
     formData.append('file', new Blob([firmwareBuffer]), 'firmware.bin');
 
-    const uploadResponse = await fetch(`${baseUrl}/ota/upload`, {
+    // Race between upload completing and detecting device reboot
+    const uploadPromise = fetch(`${baseUrl}/ota/upload`, {
       method: 'POST',
       body: formData
-    });
+    }).then(response => ({ type: 'upload' as const, response }));
 
-    if (!uploadResponse.ok) {
-      console.error(`   ❌ Failed to upload firmware: ${uploadResponse.status}`);
-      return false;
+    const rebootPromise = waitForReboot(device.ip).then(rebooted => ({
+      type: 'reboot' as const,
+      rebooted
+    }));
+
+    const result = await Promise.race([uploadPromise, rebootPromise]);
+
+    if (result.type === 'upload') {
+      if (!result.response.ok) {
+        console.error(`   ❌ Failed to upload firmware: ${result.response.status}`);
+        return false;
+      }
+      console.log(`   ✅ Flash successful! Device will reboot.`);
+      return true;
+    } else {
+      // Reboot detected
+      if (result.rebooted) {
+        console.log(`   ✅ Flash successful! Device rebooted.`);
+        return true;
+      } else {
+        console.error(`   ❌ Timeout waiting for device to reboot`);
+        return false;
+      }
     }
-
-    console.log(`   ✅ Flash successful! Device will reboot.`);
-    return true;
 
   } catch (error: any) {
     console.error(`   ❌ Error: ${error.message}`);
