@@ -65,8 +65,15 @@ void UIManager::update() {
     // Handle multi-step rebuild with brightness animation
     if (rebuildFadeInProgress) {
         static unsigned long lastFadeTime = 0;
-        static uint8_t fadeValue = 100;
+        static uint8_t fadeValue = 0;  // Will be initialized on first use
+        static bool fadeValueInitialized = false;
         unsigned long now = millis();
+
+        // Initialize fadeValue to current brightness at start of fade
+        if (rebuildFadeStep == 0 && !fadeValueInitialized) {
+            fadeValue = currentBrightness;
+            fadeValueInitialized = true;
+        }
 
         switch (rebuildFadeStep) {
             case 0:  // Fade out
@@ -108,7 +115,7 @@ void UIManager::update() {
             case 3:  // Done
                 rebuildFadeInProgress = false;
                 rebuildFadeStep = 0;
-                fadeValue = 100;  // Reset for next rebuild
+                fadeValueInitialized = false;  // Reset for next rebuild
                 break;
         }
     }
