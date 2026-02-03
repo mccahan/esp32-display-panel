@@ -254,7 +254,7 @@ export function createDefaultConfig(deviceId: string, name: string, ip: string):
       { id: 2, name: 'All On', icon: 'ok' }
     ],
     server: {
-      reportingUrl: `http://${ip}:3000`
+      reportingUrl: process.env.REPORTING_URL || `http://${ip}:3000`
     }
   };
 }
