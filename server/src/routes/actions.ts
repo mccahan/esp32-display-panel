@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getDevice, upsertDevice } from '../db';
+import { getDevice, upsertDevice, getGlobalScene } from '../db';
 import { pluginManager } from '../plugins/pluginManager';
 
 const router = Router();
@@ -90,22 +90,151 @@ router.post('/fan/:buttonId', async (req: Request, res: Response) => {
 });
 
 // POST /api/action/scene/:sceneId - Scene activated (called by ESP32)
-router.post('/scene/:sceneId', (req: Request, res: Response) => {
+router.post('/scene/:sceneId', async (req: Request, res: Response) => {
   const sceneId = parseInt(req.params.sceneId);
   const { deviceId, timestamp } = req.body;
 
   console.log(`[Action] Scene ${sceneId} activated on device ${deviceId}`);
 
   const device = getDevice(deviceId);
-  if (device) {
-    const scene = device.config.scenes.find(s => s.id === sceneId);
-    if (scene) {
-      console.log(`[Action] Scene name: ${scene.name}`);
+  if (!device) {
+    return res.status(404).json({ success: false, error: 'Device not found' });
+  }
+
+  const deviceScene = device.config.scenes.find(s => s.id === sceneId);
+  if (!deviceScene) {
+    return res.status(404).json({ success: false, error: 'Scene not found on device' });
+  }
+
+  console.log(`[Action] Scene name: ${deviceScene.name}`);
+
+  // Check if this device scene references a global scene
+  if (!deviceScene.globalSceneId) {
+    console.log(`[Action] Scene "${deviceScene.name}" has no global scene reference, skipping execution`);
+    return res.json({ success: true, sceneId, message: 'No global scene linked' });
+  }
+
+  const results: Array<{ device: string; success: boolean; error?: string }> = [];
+
+  // Handle built-in scenes (All On / All Off for this device)
+  if (deviceScene.globalSceneId === '__builtin_all_on__' || deviceScene.globalSceneId === '__builtin_all_off__') {
+    const targetState = deviceScene.globalSceneId === '__builtin_all_on__';
+    console.log(`[Action] Executing built-in "${targetState ? 'All On' : 'All Off'}" for device ${deviceId}`);
+
+    // Get all buttons with bindings on this device
+    const boundButtons = device.config.buttons.filter(b => b.binding);
+    console.log(`[Action] Found ${boundButtons.length} bound buttons to control`);
+
+    for (const button of boundButtons) {
+      try {
+        console.log(`[Action] -> ${button.name}: ${targetState ? 'ON' : 'OFF'}`);
+
+        const result = await pluginManager.executeAction({
+          deviceId,
+          buttonId: button.id,
+          binding: button.binding!,
+          newState: targetState,
+          speedLevel: targetState && button.type === 'fan' ? 1 : 0,
+          timestamp: Date.now()
+        });
+
+        // Update local button state
+        if (result.success) {
+          button.state = targetState;
+          if (button.type === 'fan') {
+            button.speedLevel = targetState ? 1 : 0;
+          }
+        }
+
+        results.push({
+          device: button.name,
+          success: result.success,
+          error: result.error
+        });
+
+        if (!result.success) {
+          console.error(`[Action] Failed to execute action for ${button.name}: ${result.error}`);
+        }
+      } catch (error: any) {
+        console.error(`[Action] Error executing action for ${button.name}:`, error);
+        results.push({
+          device: button.name,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+
+    // Save updated button states
+    upsertDevice(device);
+
+    const allSuccess = results.every(r => r.success);
+    console.log(`[Action] Built-in scene execution ${allSuccess ? 'completed' : 'completed with errors'}`);
+
+    return res.json({
+      success: allSuccess,
+      sceneId,
+      sceneName: deviceScene.name,
+      results
+    });
+  }
+
+  // Get the global scene definition
+  const globalScene = getGlobalScene(deviceScene.globalSceneId);
+  if (!globalScene) {
+    console.log(`[Action] Global scene ${deviceScene.globalSceneId} not found`);
+    return res.status(404).json({ success: false, error: 'Global scene not found' });
+  }
+
+  console.log(`[Action] Executing global scene "${globalScene.name}" with ${globalScene.actions.length} actions`);
+
+  // Execute all actions in the scene
+  for (const action of globalScene.actions) {
+    try {
+      console.log(`[Action] -> ${action.deviceName}: ${action.targetState ? 'ON' : 'OFF'}${action.targetSpeedLevel !== undefined ? ` (speed ${action.targetSpeedLevel})` : ''}`);
+
+      const result = await pluginManager.executeAction({
+        deviceId: 'scene-execution',
+        buttonId: 0,
+        binding: {
+          pluginId: action.pluginId,
+          externalDeviceId: action.externalDeviceId,
+          deviceType: action.deviceType,
+          metadata: {}
+        },
+        newState: action.targetState,
+        speedLevel: action.targetSpeedLevel,
+        timestamp: Date.now()
+      });
+
+      results.push({
+        device: action.deviceName,
+        success: result.success,
+        error: result.error
+      });
+
+      if (!result.success) {
+        console.error(`[Action] Failed to execute action for ${action.deviceName}: ${result.error}`);
+      }
+    } catch (error: any) {
+      console.error(`[Action] Error executing action for ${action.deviceName}:`, error);
+      results.push({
+        device: action.deviceName,
+        success: false,
+        error: error.message
+      });
     }
   }
 
-  // Here you would trigger scene automations
-  res.json({ success: true, sceneId });
+  const allSuccess = results.every(r => r.success);
+  console.log(`[Action] Scene "${globalScene.name}" execution ${allSuccess ? 'completed' : 'completed with errors'}`);
+
+  res.json({
+    success: allSuccess,
+    sceneId,
+    sceneName: globalScene.name,
+    results
+  });
 });
 
 // GET /api/ping - Simple ping endpoint for connectivity check

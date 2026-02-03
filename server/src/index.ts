@@ -6,6 +6,7 @@ import devicesRouter from './routes/devices';
 import discoveryRouter from './routes/discovery';
 import actionsRouter from './routes/actions';
 import pluginsRouter from './routes/plugins';
+import scenesRouter from './routes/scenes';
 import { startDiscovery } from './services/discoveryService';
 import { startHealthChecks, stopHealthChecks } from './services/deviceService';
 import { startStatePolling, stopStatePolling } from './services/stateSyncService';
@@ -29,6 +30,7 @@ app.use('/api/devices', devicesRouter);
 app.use('/api/discovery', discoveryRouter);
 app.use('/api/action', actionsRouter);
 app.use('/api/plugins', pluginsRouter);
+app.use('/api/scenes', scenesRouter);
 
 // Simple ping endpoint
 app.get('/api/ping', (req, res) => {

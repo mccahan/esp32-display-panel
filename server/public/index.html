@@ -146,13 +146,36 @@
     .button-list { display: flex; flex-direction: column; gap: 8px; }
     .button-item {
       display: grid;
-      grid-template-columns: 50px 1fr 80px 80px 36px;
+      grid-template-columns: 24px 50px 1fr 80px 80px 36px;
       gap: 8px;
       align-items: center;
       padding: 12px;
       background: #0f0f1a;
       border-radius: 8px;
       border: 1px solid #2a2a4a;
+      transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    }
+    .button-item.dragging {
+      opacity: 0.5;
+      border-color: #00d4ff;
+    }
+    .button-item.drag-over {
+      border-color: #00d4ff;
+      box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+      transform: scale(1.02);
+    }
+    .drag-handle {
+      cursor: grab;
+      color: #666;
+      font-size: 1.2em;
+      text-align: center;
+      user-select: none;
+    }
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+    .drag-handle:hover {
+      color: #00d4ff;
     }
     .button-status {
       display: flex;
@@ -499,6 +522,118 @@
       max-height: 400px;
       overflow-y: auto;
     }
+    #live-preview-content.expanded {
+      max-height: 600px;
+    }
+
+    /* Scene styles */
+    .scene-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: #16213e;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border: 2px solid #2a2a4a;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .scene-item:hover { border-color: #00d4ff; }
+    .scene-item.selected { border-color: #00d4ff; background: #1a2744; }
+    .scene-item .name { font-weight: 600; margin-bottom: 4px; }
+    .scene-item .details { color: #888; font-size: 0.85em; }
+
+    .scene-action-item {
+      display: grid;
+      grid-template-columns: 1fr 100px 80px 36px;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      background: #0f0f1a;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      border: 1px solid #2a2a4a;
+    }
+    .scene-action-item .device-info {
+      display: flex;
+      flex-direction: column;
+    }
+    .scene-action-item .device-name { font-weight: 500; }
+    .scene-action-item .device-plugin { color: #888; font-size: 0.8em; }
+    .scene-action-item select {
+      padding: 8px;
+      border: 1px solid #2a2a4a;
+      border-radius: 6px;
+      background: #1a1a2e;
+      color: #e0e0e0;
+    }
+
+    .device-picker-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: #0f0f1a;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      border: 1px solid #2a2a4a;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .device-picker-item:hover {
+      border-color: #00d4ff;
+      background: #16213e;
+    }
+    .device-picker-item.added {
+      border-color: #198754;
+      background: rgba(25, 135, 84, 0.15);
+    }
+    .device-picker-item.added:hover {
+      border-color: #e94560;
+      background: rgba(233, 69, 96, 0.15);
+    }
+    .device-picker-item .device-info { flex: 1; }
+    .device-picker-item .device-name { font-weight: 500; }
+    .device-picker-item .device-details { color: #888; font-size: 0.85em; }
+
+    /* Scrollable modal content for device picker */
+    #scene-device-picker-modal .modal-content {
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+    }
+    #scene-device-picker-list {
+      max-height: 60vh;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    /* Scene action state toggle */
+    .scene-state-toggle {
+      cursor: pointer;
+      user-select: none;
+    }
+    .scene-state-toggle .state-label {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: 0.85em;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .scene-state-toggle .state-label.on {
+      background: linear-gradient(135deg, #ff9f0a 0%, #ff6b00 100%);
+      color: #000;
+    }
+    .scene-state-toggle .state-label.off {
+      background: #2a2a4a;
+      color: #888;
+    }
+    .scene-state-toggle:hover .state-label {
+      transform: scale(1.05);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
   </style>
 </head>
 <body>
@@ -512,6 +647,7 @@
   <div class="container">
     <div class="tabs">
       <div class="tab active" data-tab="devices">Devices</div>
+      <div class="tab" data-tab="scenes">Scenes</div>
       <div class="tab" data-tab="discover">Discover</div>
       <div class="tab" data-tab="plugins">Plugins</div>
     </div>
@@ -587,7 +723,7 @@
                   <span class="toggle-slider"></span>
                 </label>
               </div>
-              <div class="button-list" id="scene-list"></div>
+              <div class="button-list" id="device-scene-list"></div>
             </div>
 
             <div class="actions">
@@ -599,15 +735,23 @@
           </div>
 
           <div class="card">
-            <div class="section-title">Live Preview</div>
-            <div class="info-grid" id="device-info"></div>
-            <div class="screenshot-actions">
-              <button class="btn btn-sm btn-secondary" onclick="captureScreenshot()">Capture New</button>
-              <button class="btn btn-sm btn-secondary" onclick="refreshScreenshot()">Refresh</button>
+            <div class="collapsible-header collapsed" onclick="toggleCollapsible(this)">
+              <div class="section-title">
+                <span class="collapse-icon">▼</span>
+                Live Preview
+              </div>
+              <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); expandCollapsible(this.parentElement); captureScreenshot();">Capture</button>
             </div>
-            <div class="screenshot-container">
-              <img id="device-screenshot" src="" alt="Device screenshot" style="display: none;">
-              <div id="no-screenshot">Select a device to view screenshot</div>
+            <div class="collapsible-content collapsed" id="live-preview-content">
+              <div class="info-grid" id="device-info"></div>
+              <div class="screenshot-actions">
+                <button class="btn btn-sm btn-secondary" onclick="captureScreenshot()">Capture New</button>
+                <button class="btn btn-sm btn-secondary" onclick="refreshScreenshot()">Refresh</button>
+              </div>
+              <div class="screenshot-container">
+                <img id="device-screenshot" src="" alt="Device screenshot" style="display: none;">
+                <div id="no-screenshot">Select a device to view screenshot</div>
+              </div>
             </div>
           </div>
         </div>
@@ -616,6 +760,72 @@
           <div class="empty-state">
             <p style="font-size: 1.2em; margin-bottom: 10px;">Select a device</p>
             <p>Choose a device from the list to configure it, or go to the Discover tab to add new devices.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scenes Tab -->
+    <div id="tab-scenes" class="hidden">
+      <div class="main-layout">
+        <!-- Scene List Sidebar -->
+        <div>
+          <div class="card">
+            <h2>Global Scenes</h2>
+            <button class="btn btn-primary btn-sm" onclick="createNewScene()" style="margin-bottom: 15px;">+ New Scene</button>
+            <div id="scene-list">
+              <div class="empty-state">Loading scenes...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scene Editor Panel -->
+        <div id="scene-editor" class="hidden">
+          <div class="card">
+            <div class="section">
+              <div class="section-title">Scene Settings</div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Scene Name</label>
+                  <input type="text" id="scene-name" placeholder="e.g., Goodnight">
+                </div>
+                <div class="form-group">
+                  <label>Icon</label>
+                  <select id="scene-icon">
+                    <option value="power">Power</option>
+                    <option value="charge">Light</option>
+                    <option value="home">Home</option>
+                    <option value="ok">Check</option>
+                    <option value="settings">Gear</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">
+                Device Actions
+                <button class="btn btn-sm btn-primary" onclick="openSceneDevicePicker()">+ Add Device</button>
+              </div>
+              <div id="scene-actions-list">
+                <div class="empty-state" style="padding: 15px; color: #666;">Add devices to control when this scene is activated</div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="btn btn-success" onclick="saveScene()">Save Scene</button>
+              <button class="btn btn-secondary" onclick="testScene()">Test Scene</button>
+              <div class="actions-right">
+                <button class="btn btn-danger" onclick="deleteScene()">Delete Scene</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="no-scene-selected" class="card">
+          <div class="empty-state">
+            <p style="font-size: 1.2em; margin-bottom: 10px;">Select or create a scene</p>
+            <p>Scenes let you control multiple devices with a single button press.</p>
           </div>
         </div>
       </div>
@@ -759,6 +969,22 @@
     </div>
   </div>
 
+  <!-- Scene Device Picker Modal -->
+  <div id="scene-device-picker-modal" class="modal hidden">
+    <div class="modal-content modal-lg">
+      <h2>Add Devices to Scene</h2>
+      <p style="color: #888; margin-bottom: 15px;">
+        Click devices to add them. You can add multiple devices before closing.
+      </p>
+      <div id="scene-device-picker-list">
+        <div class="empty-state">Loading available devices...</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="closeSceneDevicePicker()">Done</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let devices = [];
     let selectedDevice = null;
@@ -819,6 +1045,16 @@
           }
           break;
 
+        case 'scenes':
+          switchTab('scenes');
+          if (parts[1]) {
+            const sceneId = decodeURIComponent(parts[1]);
+            waitForScenesAndSelect(sceneId);
+          } else {
+            loadGlobalScenes();
+          }
+          break;
+
         case 'discover':
           switchTab('discover');
           loadDiscoveredDevices();
@@ -845,6 +1081,7 @@
       if (tab) tab.classList.add('active');
 
       document.getElementById('tab-devices').classList.toggle('hidden', tabName !== 'devices');
+      document.getElementById('tab-scenes').classList.toggle('hidden', tabName !== 'scenes');
       document.getElementById('tab-discover').classList.toggle('hidden', tabName !== 'discover');
       document.getElementById('tab-plugins').classList.toggle('hidden', tabName !== 'plugins');
     }
@@ -905,6 +1142,12 @@
             navigateTo(`/device/${encodeURIComponent(selectedDevice.id)}`);
           } else {
             navigateTo('/');
+          }
+        } else if (tabName === 'scenes') {
+          if (selectedScene) {
+            navigateTo(`/scenes/${encodeURIComponent(selectedScene.id)}`);
+          } else {
+            navigateTo('/scenes');
           }
         } else if (tabName === 'discover') {
           navigateTo('/discover');
@@ -978,7 +1221,8 @@
         `;
 
         renderButtonList();
-        renderSceneList();
+        await loadGlobalScenes();  // Load global scenes before rendering device scenes
+        renderDeviceSceneList();
         renderDevices();
         refreshScreenshot();
       } catch (error) {
@@ -1075,7 +1319,15 @@
       if (!selectedDevice) return;
       const buttonList = document.getElementById('button-list');
       buttonList.innerHTML = selectedDevice.config.buttons.map((btn, i) => `
-        <div class="button-item" style="grid-template-columns: 50px 1fr 80px 80px ${btn.type === 'fan' ? '70px' : ''} auto 36px;">
+        <div class="button-item" draggable="true" data-index="${i}"
+             ondragstart="handleButtonDragStart(event, ${i})"
+             ondragover="handleButtonDragOver(event)"
+             ondragenter="handleButtonDragEnter(event)"
+             ondragleave="handleButtonDragLeave(event)"
+             ondrop="handleButtonDrop(event, ${i})"
+             ondragend="handleButtonDragEnd(event)"
+             style="grid-template-columns: 24px 50px 1fr 80px 80px ${btn.type === 'fan' ? '70px' : ''} auto 36px;">
+          <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
           <div class="button-status ${getStatusClass(btn)}" onclick="toggleButtonState(${i})" title="Click to toggle">
             ${getStatusText(btn)}
           </div>
@@ -1115,6 +1367,69 @@
       }
     }
 
+    // ========================================
+    // Button Drag and Drop Reordering
+    // ========================================
+    let draggedButtonIndex = null;
+
+    function handleButtonDragStart(event, index) {
+      draggedButtonIndex = index;
+      event.target.classList.add('dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', index);
+    }
+
+    function handleButtonDragOver(event) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+    }
+
+    function handleButtonDragEnter(event) {
+      event.preventDefault();
+      const item = event.target.closest('.button-item');
+      if (item && !item.classList.contains('dragging')) {
+        item.classList.add('drag-over');
+      }
+    }
+
+    function handleButtonDragLeave(event) {
+      const item = event.target.closest('.button-item');
+      if (item) {
+        item.classList.remove('drag-over');
+      }
+    }
+
+    function handleButtonDrop(event, targetIndex) {
+      event.preventDefault();
+      const item = event.target.closest('.button-item');
+      if (item) {
+        item.classList.remove('drag-over');
+      }
+
+      if (draggedButtonIndex === null || draggedButtonIndex === targetIndex) return;
+      if (!selectedDevice) return;
+
+      // Reorder the buttons array
+      const buttons = selectedDevice.config.buttons;
+      const [draggedButton] = buttons.splice(draggedButtonIndex, 1);
+      buttons.splice(targetIndex, 0, draggedButton);
+
+      // Update button IDs to match new order
+      buttons.forEach((btn, i) => btn.id = i + 1);
+
+      renderButtonList();
+      showToast('Buttons reordered', 'info');
+    }
+
+    function handleButtonDragEnd(event) {
+      event.target.classList.remove('dragging');
+      draggedButtonIndex = null;
+      // Clean up any remaining drag-over classes
+      document.querySelectorAll('.button-item.drag-over').forEach(el => {
+        el.classList.remove('drag-over');
+      });
+    }
+
     function toggleScenes(enabled) {
       if (!selectedDevice) return;
       if (enabled) {
@@ -1127,12 +1442,12 @@
       } else {
         selectedDevice.config.scenes = [];
       }
-      renderSceneList();
+      renderDeviceSceneList();
     }
 
-    function renderSceneList() {
+    function renderDeviceSceneList() {
       if (!selectedDevice) return;
-      const sceneList = document.getElementById('scene-list');
+      const sceneList = document.getElementById('device-scene-list');
       const scenesEnabled = document.getElementById('scenes-enabled');
 
       const hasScenes = selectedDevice.config.scenes && selectedDevice.config.scenes.length > 0;
@@ -1144,27 +1459,54 @@
       }
 
       sceneList.innerHTML = selectedDevice.config.scenes.map((scene, i) => `
-        <div class="button-item" style="grid-template-columns: 1fr 100px 36px;">
-          <input type="text" value="${scene.name}" onchange="updateSceneName(${i}, this.value)" placeholder="Scene name">
-          <select onchange="updateSceneIcon(${i}, this.value)">
+        <div class="button-item" style="grid-template-columns: 1fr 150px 100px;">
+          <input type="text" value="${scene.name}" onchange="updateDeviceSceneName(${i}, this.value)" placeholder="Scene name">
+          <select onchange="updateDeviceSceneGlobal(${i}, this.value)">
+            <option value="">-- Custom --</option>
+            <optgroup label="Built-in">
+              <option value="__builtin_all_off__" ${scene.globalSceneId === '__builtin_all_off__' ? 'selected' : ''}>All Off (this device)</option>
+              <option value="__builtin_all_on__" ${scene.globalSceneId === '__builtin_all_on__' ? 'selected' : ''}>All On (this device)</option>
+            </optgroup>
+            <optgroup label="Global Scenes">
+              ${globalScenes.map(gs => `<option value="${gs.id}" ${scene.globalSceneId === gs.id ? 'selected' : ''}>${gs.name}</option>`).join('')}
+            </optgroup>
+          </select>
+          <select onchange="updateDeviceSceneIcon(${i}, this.value)">
             <option value="power" ${scene.icon === 'power' ? 'selected' : ''}>Power</option>
             <option value="charge" ${scene.icon === 'charge' ? 'selected' : ''}>Light</option>
             <option value="home" ${scene.icon === 'home' ? 'selected' : ''}>Home</option>
+            <option value="ok" ${scene.icon === 'ok' ? 'selected' : ''}>Check</option>
           </select>
-          <div></div>
         </div>
       `).join('');
     }
 
-    function updateSceneName(index, name) {
+    function updateDeviceSceneName(index, name) {
       if (selectedDevice && selectedDevice.config.scenes) {
         selectedDevice.config.scenes[index].name = name;
       }
     }
 
-    function updateSceneIcon(index, icon) {
+    function updateDeviceSceneIcon(index, icon) {
       if (selectedDevice && selectedDevice.config.scenes) {
         selectedDevice.config.scenes[index].icon = icon;
+      }
+    }
+
+    function updateDeviceSceneGlobal(index, globalSceneId) {
+      if (selectedDevice && selectedDevice.config.scenes) {
+        if (globalSceneId) {
+          selectedDevice.config.scenes[index].globalSceneId = globalSceneId;
+          // Optionally update the name to match the global scene
+          const globalScene = globalScenes.find(s => s.id === globalSceneId);
+          if (globalScene) {
+            selectedDevice.config.scenes[index].name = globalScene.name;
+            selectedDevice.config.scenes[index].icon = globalScene.icon;
+            renderDeviceSceneList();
+          }
+        } else {
+          delete selectedDevice.config.scenes[index].globalSceneId;
+        }
       }
     }
 
@@ -1612,6 +1954,9 @@
           return;
         }
 
+        // Sort by device name
+        importDevices.sort((a, b) => a.name.localeCompare(b.name));
+
         list.innerHTML = importDevices.map((d, i) => `
           <div class="external-device-item" style="cursor: pointer;" onclick="bindDevice(${i})">
             <div class="external-device-info">
@@ -1749,6 +2094,9 @@
           return;
         }
 
+        // Sort by device name
+        importableDevices.sort((a, b) => a.device.name.localeCompare(b.device.name));
+
         list.innerHTML = importableDevices.map((item, i) => `
           <div class="external-device-item">
             <div class="external-device-info">
@@ -1838,8 +2186,319 @@
       showToast(`Created button "${name}" with ${creatingButtonDevice.pluginName} binding`, 'success');
     }
 
+    // ========================================
+    // Global Scene Management
+    // ========================================
+    let globalScenes = [];
+    let selectedScene = null;
+    let availableSceneDevices = [];
+
+    async function loadGlobalScenes() {
+      try {
+        const response = await fetch('/api/scenes');
+        globalScenes = await response.json();
+        renderSceneList();
+      } catch (error) {
+        console.error('Failed to load scenes:', error);
+      }
+    }
+
+    function renderSceneList() {
+      const list = document.getElementById('scene-list');
+      if (globalScenes.length === 0) {
+        list.innerHTML = '<div class="empty-state">No scenes yet. Click "+ New Scene" to create one.</div>';
+        return;
+      }
+
+      list.innerHTML = globalScenes.map(s => `
+        <div class="scene-item ${selectedScene?.id === s.id ? 'selected' : ''}" onclick="selectScene('${s.id}')">
+          <div>
+            <div class="name">${s.name}</div>
+            <div class="details">${s.actions.length} device${s.actions.length !== 1 ? 's' : ''}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function selectScene(id, updateUrl = true) {
+      try {
+        const response = await fetch(`/api/scenes/${id}`);
+        selectedScene = await response.json();
+
+        if (updateUrl) {
+          navigateTo(`/scenes/${encodeURIComponent(id)}`, true);
+        }
+
+        document.getElementById('scene-editor').classList.remove('hidden');
+        document.getElementById('no-scene-selected').classList.add('hidden');
+
+        document.getElementById('scene-name').value = selectedScene.name;
+        document.getElementById('scene-icon').value = selectedScene.icon;
+
+        renderSceneActions();
+        renderSceneList();
+      } catch (error) {
+        console.error('Failed to load scene:', error);
+        showToast('Failed to load scene', 'error');
+      }
+    }
+
+    async function waitForScenesAndSelect(sceneId) {
+      await loadGlobalScenes();
+      const scene = globalScenes.find(s => s.id === sceneId);
+      if (scene) {
+        selectScene(sceneId, false);
+      }
+    }
+
+    function createNewScene() {
+      selectedScene = {
+        id: null,
+        name: '',
+        icon: 'power',
+        actions: []
+      };
+
+      document.getElementById('scene-editor').classList.remove('hidden');
+      document.getElementById('no-scene-selected').classList.add('hidden');
+
+      document.getElementById('scene-name').value = '';
+      document.getElementById('scene-icon').value = 'power';
+
+      renderSceneActions();
+      renderSceneList();
+    }
+
+    function renderSceneActions() {
+      const list = document.getElementById('scene-actions-list');
+      if (!selectedScene || selectedScene.actions.length === 0) {
+        list.innerHTML = '<div class="empty-state" style="padding: 15px; color: #666;">Add devices to control when this scene is activated</div>';
+        return;
+      }
+
+      list.innerHTML = selectedScene.actions.map((action, i) => `
+        <div class="scene-action-item">
+          <div class="device-info">
+            <span class="device-name">${action.deviceName}</span>
+            <span class="device-plugin">${action.pluginId} • ${action.deviceType}</span>
+          </div>
+          <div class="scene-state-toggle" onclick="toggleSceneActionState(${i})" title="Click to toggle">
+            <span class="state-label ${action.targetState ? 'on' : 'off'}">${action.targetState ? 'ON' : 'OFF'}</span>
+          </div>
+          ${action.deviceType === 'fan' ? `
+          <select onchange="updateSceneActionSpeed(${i}, this.value)">
+            <option value="0" ${action.targetSpeedLevel === 0 ? 'selected' : ''}>Off</option>
+            <option value="1" ${action.targetSpeedLevel === 1 ? 'selected' : ''}>Low</option>
+            <option value="2" ${action.targetSpeedLevel === 2 ? 'selected' : ''}>Med</option>
+            <option value="3" ${action.targetSpeedLevel === 3 ? 'selected' : ''}>High</option>
+          </select>
+          ` : '<div></div>'}
+          <button class="btn btn-sm btn-danger" onclick="removeSceneAction(${i})">×</button>
+        </div>
+      `).join('');
+    }
+
+    function toggleSceneActionState(index) {
+      if (selectedScene && selectedScene.actions[index]) {
+        selectedScene.actions[index].targetState = !selectedScene.actions[index].targetState;
+        renderSceneActions();
+      }
+    }
+
+    function updateSceneActionState(index, value) {
+      if (selectedScene && selectedScene.actions[index]) {
+        selectedScene.actions[index].targetState = value === 'on';
+      }
+    }
+
+    function updateSceneActionSpeed(index, value) {
+      if (selectedScene && selectedScene.actions[index]) {
+        selectedScene.actions[index].targetSpeedLevel = parseInt(value);
+      }
+    }
+
+    function removeSceneAction(index) {
+      if (selectedScene) {
+        selectedScene.actions.splice(index, 1);
+        renderSceneActions();
+      }
+    }
+
+    async function openSceneDevicePicker() {
+      document.getElementById('scene-device-picker-modal').classList.remove('hidden');
+      document.getElementById('scene-device-picker-list').innerHTML = '<div class="empty-state">Loading available devices...</div>';
+
+      try {
+        const response = await fetch('/api/scenes/available/devices');
+        availableSceneDevices = await response.json();
+
+        // Sort by device name
+        availableSceneDevices.sort((a, b) => a.device.name.localeCompare(b.device.name));
+
+        if (availableSceneDevices.length === 0) {
+          document.getElementById('scene-device-picker-list').innerHTML =
+            '<div class="empty-state">No devices available. Enable a plugin and discover devices first.</div>';
+          return;
+        }
+
+        renderSceneDevicePicker();
+      } catch (error) {
+        console.error('Failed to load available devices:', error);
+        document.getElementById('scene-device-picker-list').innerHTML =
+          '<div class="empty-state" style="color: #ea868f;">Failed to load devices</div>';
+      }
+    }
+
+    function renderSceneDevicePicker() {
+      if (!selectedScene || availableSceneDevices.length === 0) return;
+
+      document.getElementById('scene-device-picker-list').innerHTML = availableSceneDevices.map((item, i) => {
+        const isAdded = selectedScene.actions.some(a =>
+          a.pluginId === item.pluginId && a.externalDeviceId === item.device.id
+        );
+
+        return `
+          <div class="device-picker-item ${isAdded ? 'added' : ''}" onclick="toggleDeviceInScene(${i})">
+            <div class="device-info">
+              <div class="device-name">${item.device.name}</div>
+              <div class="device-details">${item.pluginName} • ${item.device.type}${item.device.room ? ' • ' + item.device.room : ''}</div>
+            </div>
+            <button class="btn btn-sm ${isAdded ? 'btn-danger' : 'btn-primary'}">${isAdded ? 'Remove' : 'Add'}</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function closeSceneDevicePicker() {
+      document.getElementById('scene-device-picker-modal').classList.add('hidden');
+    }
+
+    function toggleDeviceInScene(deviceIndex) {
+      if (!selectedScene) return;
+
+      const item = availableSceneDevices[deviceIndex];
+
+      // Check if device is already in the scene
+      const existingIndex = selectedScene.actions.findIndex(a =>
+        a.pluginId === item.pluginId && a.externalDeviceId === item.device.id
+      );
+
+      if (existingIndex >= 0) {
+        // Remove from scene
+        selectedScene.actions.splice(existingIndex, 1);
+        showToast(`Removed ${item.device.name}`, 'info');
+      } else {
+        // Add to scene
+        selectedScene.actions.push({
+          pluginId: item.pluginId,
+          externalDeviceId: item.device.id,
+          deviceName: item.device.name,
+          deviceType: item.device.type,
+          targetState: true,
+          targetSpeedLevel: item.device.type === 'fan' ? 1 : undefined
+        });
+        showToast(`Added ${item.device.name}`, 'success');
+      }
+
+      renderSceneActions();
+      renderSceneDevicePicker();  // Re-render to update visual state
+    }
+
+    async function saveScene() {
+      if (!selectedScene) return;
+
+      const name = document.getElementById('scene-name').value;
+      const icon = document.getElementById('scene-icon').value;
+
+      if (!name) {
+        showToast('Please enter a scene name', 'error');
+        return;
+      }
+
+      selectedScene.name = name;
+      selectedScene.icon = icon;
+
+      try {
+        let response;
+        if (selectedScene.id) {
+          // Update existing
+          response = await fetch(`/api/scenes/${selectedScene.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(selectedScene)
+          });
+        } else {
+          // Create new
+          response = await fetch('/api/scenes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(selectedScene)
+          });
+        }
+
+        if (response.ok) {
+          const saved = await response.json();
+          selectedScene = saved;
+          showToast('Scene saved!', 'success');
+          await loadGlobalScenes();
+          navigateTo(`/scenes/${encodeURIComponent(saved.id)}`, true);
+        } else {
+          const error = await response.json();
+          showToast(error.error || 'Failed to save scene', 'error');
+        }
+      } catch (error) {
+        console.error('Failed to save scene:', error);
+        showToast('Failed to save scene', 'error');
+      }
+    }
+
+    async function testScene() {
+      if (!selectedScene || !selectedScene.id) {
+        showToast('Save the scene first before testing', 'error');
+        return;
+      }
+
+      showToast('Executing scene...', 'info');
+
+      try {
+        const response = await fetch(`/api/scenes/${selectedScene.id}/execute`, {
+          method: 'POST'
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          showToast(`Scene "${result.scene}" executed successfully!`, 'success');
+        } else {
+          const failed = result.results.filter(r => !r.success);
+          showToast(`Scene executed with ${failed.length} error(s)`, 'error');
+        }
+      } catch (error) {
+        console.error('Failed to execute scene:', error);
+        showToast('Failed to execute scene', 'error');
+      }
+    }
+
+    async function deleteScene() {
+      if (!selectedScene || !selectedScene.id) return;
+      if (!confirm(`Delete scene "${selectedScene.name}"?`)) return;
+
+      try {
+        await fetch(`/api/scenes/${selectedScene.id}`, { method: 'DELETE' });
+        selectedScene = null;
+        document.getElementById('scene-editor').classList.add('hidden');
+        document.getElementById('no-scene-selected').classList.remove('hidden');
+        navigateTo('/scenes', true);
+        await loadGlobalScenes();
+        showToast('Scene deleted', 'success');
+      } catch (error) {
+        console.error('Failed to delete scene:', error);
+        showToast('Failed to delete scene', 'error');
+      }
+    }
+
     // Initial load
     loadDevices();
+    loadGlobalScenes();  // Load global scenes on startup
     setInterval(loadDevices, 30000);
 
     // Handle initial route on page load

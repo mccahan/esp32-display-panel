@@ -10,8 +10,10 @@ const devices_1 = __importDefault(require("./routes/devices"));
 const discovery_1 = __importDefault(require("./routes/discovery"));
 const actions_1 = __importDefault(require("./routes/actions"));
 const plugins_1 = __importDefault(require("./routes/plugins"));
+const scenes_1 = __importDefault(require("./routes/scenes"));
 const discoveryService_1 = require("./services/discoveryService");
 const deviceService_1 = require("./services/deviceService");
+const stateSyncService_1 = require("./services/stateSyncService");
 const pluginManager_1 = require("./plugins/pluginManager");
 // Import plugins
 const homebridge_1 = __importDefault(require("./plugins/homebridge"));
@@ -27,6 +29,7 @@ app.use('/api/devices', devices_1.default);
 app.use('/api/discovery', discovery_1.default);
 app.use('/api/action', actions_1.default);
 app.use('/api/plugins', plugins_1.default);
+app.use('/api/scenes', scenes_1.default);
 // Simple ping endpoint
 app.get('/api/ping', (req, res) => {
     res.json({ pong: true, timestamp: Date.now() });
@@ -53,16 +56,22 @@ async function start() {
         (0, discoveryService_1.startDiscovery)();
         // Start periodic health checks (every 60 seconds)
         (0, deviceService_1.startHealthChecks)(60000);
+        // Start state polling for external device changes (per-plugin intervals)
+        (0, stateSyncService_1.startStatePolling)();
     });
 }
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
     console.log('\nShutting down...');
+    (0, stateSyncService_1.stopStatePolling)();
+    (0, deviceService_1.stopHealthChecks)();
     await pluginManager_1.pluginManager.shutdown();
     process.exit(0);
 });
 process.on('SIGTERM', async () => {
     console.log('\nShutting down...');
+    (0, stateSyncService_1.stopStatePolling)();
+    (0, deviceService_1.stopHealthChecks)();
     await pluginManager_1.pluginManager.shutdown();
     process.exit(0);
 });

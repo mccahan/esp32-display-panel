@@ -43,11 +43,19 @@ exports.getDiscoveredDevices = getDiscoveredDevices;
 exports.addDiscoveredDevice = addDiscoveredDevice;
 exports.removeDiscoveredDevice = removeDiscoveredDevice;
 exports.createDefaultConfig = createDefaultConfig;
+exports.loadGlobalScenes = loadGlobalScenes;
+exports.saveGlobalScenes = saveGlobalScenes;
+exports.getAllGlobalScenes = getAllGlobalScenes;
+exports.getGlobalScene = getGlobalScene;
+exports.upsertGlobalScene = upsertGlobalScene;
+exports.deleteGlobalScene = deleteGlobalScene;
+exports.generateSceneId = generateSceneId;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 // Data directory path
 const DATA_DIR = path.join(__dirname, '../../data');
 const DEVICES_FILE = path.join(DATA_DIR, 'devices.json');
+const SCENES_FILE = path.join(DATA_DIR, 'scenes.json');
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -159,6 +167,60 @@ function createDefaultConfig(deviceId, name, ip) {
         }
     };
 }
+// ============================================================================
+// Global Scenes Storage
+// ============================================================================
+let globalScenes = new Map();
+// Load global scenes from file
+function loadGlobalScenes() {
+    try {
+        if (fs.existsSync(SCENES_FILE)) {
+            const data = fs.readFileSync(SCENES_FILE, 'utf-8');
+            const parsed = JSON.parse(data);
+            globalScenes = new Map(Object.entries(parsed));
+            console.log(`Loaded ${globalScenes.size} global scenes from storage`);
+        }
+    }
+    catch (error) {
+        console.error('Failed to load global scenes:', error);
+        globalScenes = new Map();
+    }
+}
+// Save global scenes to file
+function saveGlobalScenes() {
+    try {
+        const data = Object.fromEntries(globalScenes);
+        fs.writeFileSync(SCENES_FILE, JSON.stringify(data, null, 2));
+    }
+    catch (error) {
+        console.error('Failed to save global scenes:', error);
+    }
+}
+// Get all global scenes
+function getAllGlobalScenes() {
+    return Array.from(globalScenes.values());
+}
+// Get global scene by ID
+function getGlobalScene(id) {
+    return globalScenes.get(id);
+}
+// Create or update global scene
+function upsertGlobalScene(scene) {
+    globalScenes.set(scene.id, scene);
+    saveGlobalScenes();
+}
+// Delete global scene
+function deleteGlobalScene(id) {
+    const result = globalScenes.delete(id);
+    if (result)
+        saveGlobalScenes();
+    return result;
+}
+// Generate unique scene ID
+function generateSceneId() {
+    return 'scene-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
 // Initialize
 loadDevices();
+loadGlobalScenes();
 //# sourceMappingURL=index.js.map

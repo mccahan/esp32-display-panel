@@ -38,6 +38,23 @@ export interface SceneConfig {
     id: number;
     name: string;
     icon: string;
+    globalSceneId?: string;
+}
+export interface SceneAction {
+    pluginId: string;
+    externalDeviceId: string;
+    deviceName: string;
+    deviceType: string;
+    targetState: boolean;
+    targetSpeedLevel?: number;
+}
+export interface GlobalScene {
+    id: string;
+    name: string;
+    icon: string;
+    actions: SceneAction[];
+    createdAt: number;
+    updatedAt: number;
 }
 export interface DisplayConfig {
     brightness: number;
@@ -91,4 +108,11 @@ export declare function getDiscoveredDevices(): DiscoveredDevice[];
 export declare function addDiscoveredDevice(device: DiscoveredDevice): void;
 export declare function removeDiscoveredDevice(id: string): void;
 export declare function createDefaultConfig(deviceId: string, name: string, ip: string): DeviceConfig;
+export declare function loadGlobalScenes(): void;
+export declare function saveGlobalScenes(): void;
+export declare function getAllGlobalScenes(): GlobalScene[];
+export declare function getGlobalScene(id: string): GlobalScene | undefined;
+export declare function upsertGlobalScene(scene: GlobalScene): void;
+export declare function deleteGlobalScene(id: string): boolean;
+export declare function generateSceneId(): string;
 //# sourceMappingURL=index.d.ts.map
