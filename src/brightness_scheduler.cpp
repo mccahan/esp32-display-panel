@@ -94,28 +94,39 @@ bool BrightnessScheduler::onTouchDetected() {
         return false;  // Don't block buttons
     }
 
-    // Check the actual current brightness from UIManager
-    uint8_t actualBrightness = uiManager.getBrightness();
+    // touchBrightness acts as a floor - only wake if scheduled brightness is BELOW touchBrightness
+    // This ensures the display is always readable when touched during dim periods
+    if (currentScheduledBrightness < schedule.touchBrightness) {
+        uint8_t actualBrightness = uiManager.getBrightness();
 
-    // If display is very dim (<=5%), wake it up and block the button action
-    // This works even if NTP hasn't synced yet
-    if (actualBrightness <= 5) {
-        Serial.printf("BrightnessScheduler: Touch detected at %d%% brightness, waking display (blocking for %lums)\n",
-            actualBrightness, WAKE_GRACE_PERIOD_MS);
-        state = SchedulerState::AWAKE;
-        wakeStartTime = millis();
-        wakeGraceEndTime = millis() + WAKE_GRACE_PERIOD_MS;  // Block buttons for 500ms
+        // If display is dimmer than touchBrightness, wake it up
+        if (actualBrightness < schedule.touchBrightness) {
+            // Block button action only if display was very dim (<=5%)
+            bool shouldBlock = (actualBrightness <= 5);
 
-        // Apply wake brightness immediately
-        applyBrightness(schedule.touchBrightness);
-        lastAppliedBrightness = schedule.touchBrightness;
+            if (shouldBlock) {
+                Serial.printf("BrightnessScheduler: Touch detected at %d%% brightness, waking to %d%% (blocking for %lums)\n",
+                    actualBrightness, schedule.touchBrightness, WAKE_GRACE_PERIOD_MS);
+                wakeGraceEndTime = millis() + WAKE_GRACE_PERIOD_MS;
+            } else {
+                Serial.printf("BrightnessScheduler: Touch detected at %d%% brightness, waking to %d%%\n",
+                    actualBrightness, schedule.touchBrightness);
+            }
 
-        return true;  // Block button action
-    }
+            state = SchedulerState::AWAKE;
+            wakeStartTime = millis();
 
-    // If already awake, reset the timeout
-    if (state == SchedulerState::AWAKE) {
-        wakeStartTime = millis();
+            // Apply wake brightness immediately
+            applyBrightness(schedule.touchBrightness);
+            lastAppliedBrightness = schedule.touchBrightness;
+
+            return shouldBlock;  // Only block if display was off
+        }
+
+        // If already awake, reset the timeout
+        if (state == SchedulerState::AWAKE) {
+            wakeStartTime = millis();
+        }
     }
 
     return false;  // Don't block button action
@@ -128,12 +139,12 @@ bool BrightnessScheduler::shouldBlockButtons() const {
         return false;
     }
 
-    // Block buttons during wake grace period (500ms after display wakes from 0%)
+    // Block buttons during wake grace period (500ms after display wakes from off state)
     if (millis() < wakeGraceEndTime) {
         return true;
     }
 
-    // Block buttons when actual brightness is very low (<=5%)
+    // Block buttons when display is very dim (<=5%) - requires touch to wake first
     return uiManager.getBrightness() <= 5;
 }
 
