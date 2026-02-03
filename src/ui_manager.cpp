@@ -1522,8 +1522,37 @@ void UIManager::createLCARSCard(int index, const ButtonConfig& btnConfig, int x,
     upperName.toUpperCase();
     lv_label_set_text(card.nameLabel, upperName.c_str());
     lv_obj_set_style_text_color(card.nameLabel, card.currentState ? lv_color_white() : lcarsYellow, 0);
-    lv_obj_set_width(card.nameLabel, w - 55);  // Width minus icon area
-    lv_label_set_long_mode(card.nameLabel, LV_LABEL_LONG_DOT);  // Add ... if too long
+
+    // Dynamic font sizing based on name length for LCARS
+    size_t nameLen = upperName.length();
+    int textStartX;
+    int textWidth;
+
+    if (h >= 80) {
+        // Tall cards
+        textStartX = 42;
+        textWidth = w - 50;  // More room for text
+        if (nameLen > 18) {
+            lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_12, 0);
+        } else if (nameLen > 14) {
+            lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_14, 0);
+        } else {
+            lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_16, 0);
+        }
+    } else {
+        // Short cards: use smaller fonts
+        textStartX = 38;
+        textWidth = w - 45;
+        if (nameLen > 16) {
+            lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_12, 0);
+        } else {
+            lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_14, 0);
+        }
+    }
+
+    lv_obj_set_width(card.nameLabel, textWidth);
+    lv_obj_set_style_max_height(card.nameLabel, 20, 0);  // Single line height
+    lv_label_set_long_mode(card.nameLabel, LV_LABEL_LONG_DOT);
 
     // Status text - below name on right side
     card.stateLabel = lv_label_create(card.card);
@@ -1542,17 +1571,15 @@ void UIManager::createLCARSCard(int index, const ButtonConfig& btnConfig, int x,
 
     // Adjust layout based on card height
     if (h >= 80) {
-        // Tall cards: larger fonts, stacked vertically
-        lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_16, 0);
+        // Tall cards: stacked vertically
         lv_obj_set_style_text_font(card.stateLabel, &lv_font_montserrat_14, 0);
-        lv_obj_align(card.nameLabel, LV_ALIGN_LEFT_MID, 50, -12);
-        lv_obj_align(card.stateLabel, LV_ALIGN_LEFT_MID, 50, 12);
+        lv_obj_align(card.nameLabel, LV_ALIGN_LEFT_MID, textStartX, -12);
+        lv_obj_align(card.stateLabel, LV_ALIGN_LEFT_MID, textStartX, 12);
     } else {
-        // Short cards: smaller fonts, tighter spacing
-        lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_14, 0);
+        // Short cards: tighter spacing
         lv_obj_set_style_text_font(card.stateLabel, &lv_font_montserrat_14, 0);
-        lv_obj_align(card.nameLabel, LV_ALIGN_LEFT_MID, 45, -8);
-        lv_obj_align(card.stateLabel, LV_ALIGN_LEFT_MID, 45, 10);
+        lv_obj_align(card.nameLabel, LV_ALIGN_LEFT_MID, textStartX, -8);
+        lv_obj_align(card.stateLabel, LV_ALIGN_LEFT_MID, textStartX, 10);
     }
 
     // No toggle for LCARS

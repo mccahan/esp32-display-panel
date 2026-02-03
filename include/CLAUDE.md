@@ -9,7 +9,6 @@
 |----|------|---|-------|------|
 | #481 | 11:07 PM | 🔵 | UI Manager Interface and Brightness Control | ~418 |
 | #469 | 11:04 PM | 🔵 | ESP32 Configuration Manager Structure | ~440 |
-| #286 | 8:42 PM | 🔵 | UI Manager Structure Overview | ~270 |
 | #126 | 10:18 AM | 🟣 | Adding Cyberpunk Visual Decorations and Theme Enhancements | ~522 |
 | #125 | " | 🔵 | Git Repository Shows Diverged Branch with Modified UI Files | ~453 |
 | #113 | 9:57 AM | 🟣 | Deployed Custom Fan Icon with LCARS Header Adjustments to ESP32 | ~433 |
