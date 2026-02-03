@@ -156,6 +156,27 @@ export function loadDevices(): void {
       const data = fs.readFileSync(DEVICES_FILE, 'utf-8');
       const parsed = JSON.parse(data);
       devices = new Map(Object.entries(parsed));
+
+      // Migrate old devices: convert host/port to reportingUrl
+      let migrated = false;
+      for (const device of devices.values()) {
+        if (device.config?.server && !device.config.server.reportingUrl) {
+          const server = device.config.server as any;
+          if (server.host && server.port) {
+            device.config.server.reportingUrl = `http://${server.host}:${server.port}`;
+            delete server.host;
+            delete server.port;
+            migrated = true;
+            console.log(`Migrated device ${device.id} to use reportingUrl`);
+          }
+        }
+      }
+
+      if (migrated) {
+        saveDevices();
+        console.log('Saved migrated devices');
+      }
+
       console.log(`Loaded ${devices.size} devices from storage`);
     }
   } catch (error) {
