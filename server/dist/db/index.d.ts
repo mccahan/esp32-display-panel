@@ -25,7 +25,7 @@ export interface DayNightConfig {
 }
 export interface ButtonConfig {
     id: number;
-    type: 'light' | 'switch' | 'fan';
+    type: 'light' | 'switch' | 'fan' | 'scene';
     name: string;
     icon: string;
     state: boolean;
@@ -33,6 +33,7 @@ export interface ButtonConfig {
     speedSteps?: number;
     speedLevel?: number;
     binding?: ButtonBinding;
+    sceneId?: string;
 }
 export interface SceneConfig {
     id: number;

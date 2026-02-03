@@ -201,6 +201,11 @@
       background: linear-gradient(135deg, #32d74b 0%, #28a745 100%);
       color: #000;
     }
+    .button-status.scene {
+      background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+      color: #fff;
+      cursor: default;
+    }
     .button-status:hover {
       transform: scale(1.05);
       box-shadow: 0 0 10px rgba(255, 159, 10, 0.3);
@@ -1298,6 +1303,7 @@
     }
 
     function getStatusClass(btn) {
+      if (btn.type === 'scene') return 'scene';
       if (!btn.state) return 'off';
       if (btn.type === 'fan') return 'fan-on';
       return 'on';
@@ -1331,17 +1337,30 @@
              ondragleave="handleButtonDragLeave(event)"
              ondrop="handleButtonDrop(event, ${i})"
              ondragend="handleButtonDragEnd(event)"
-             style="grid-template-columns: 24px 50px 1fr 80px 80px ${btn.type === 'fan' ? '70px' : ''} auto 36px;">
+             style="grid-template-columns: 24px 50px 1fr 80px ${btn.type === 'scene' ? '150px' : '80px'} ${btn.type === 'fan' ? '70px' : ''} ${btn.type !== 'scene' ? 'auto' : ''} 36px;">
           <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
-          <div class="button-status ${getStatusClass(btn)}" onclick="toggleButtonState(${i})" title="Click to toggle">
-            ${getStatusText(btn)}
+          <div class="button-status ${getStatusClass(btn)}" onclick="${btn.type === 'scene' ? '' : `toggleButtonState(${i})`}" title="${btn.type === 'scene' ? 'Scene button' : 'Click to toggle'}">
+            ${btn.type === 'scene' ? '▶' : getStatusText(btn)}
           </div>
           <input type="text" value="${btn.name}" onchange="updateButtonName(${i}, this.value)" placeholder="Button name">
           <select onchange="updateButtonType(${i}, this.value); renderButtonList();">
             <option value="light" ${btn.type === 'light' ? 'selected' : ''}>Light</option>
             <option value="switch" ${btn.type === 'switch' ? 'selected' : ''}>Switch</option>
             <option value="fan" ${btn.type === 'fan' ? 'selected' : ''}>Fan</option>
+            <option value="scene" ${btn.type === 'scene' ? 'selected' : ''}>Scene</option>
           </select>
+          ${btn.type === 'scene' ? `
+          <select onchange="updateButtonSceneId(${i}, this.value)">
+            <option value="">-- Select Scene --</option>
+            <optgroup label="Built-in">
+              <option value="__builtin_all_off__" ${btn.sceneId === '__builtin_all_off__' ? 'selected' : ''}>All Off (this display)</option>
+              <option value="__builtin_all_on__" ${btn.sceneId === '__builtin_all_on__' ? 'selected' : ''}>All On (this display)</option>
+            </optgroup>
+            <optgroup label="Global Scenes">
+              ${globalScenes.map(gs => `<option value="${gs.id}" ${btn.sceneId === gs.id ? 'selected' : ''}>${gs.name}</option>`).join('')}
+            </optgroup>
+          </select>
+          ` : `
           <select onchange="updateButtonIcon(${i}, this.value)">
             <option value="charge" ${btn.icon === 'charge' || btn.icon === 'light' ? 'selected' : ''}>Light</option>
             <option value="fan" ${btn.icon === 'fan' ? 'selected' : ''}>Fan</option>
@@ -1349,6 +1368,7 @@
             <option value="home" ${btn.icon === 'home' ? 'selected' : ''}>Home</option>
             <option value="settings" ${btn.icon === 'settings' ? 'selected' : ''}>Gear</option>
           </select>
+          `}
           ${btn.type === 'fan' ? `
           <select onchange="updateFanSpeedSteps(${i}, parseInt(this.value))" title="Speed Steps">
             <option value="0" ${(btn.speedSteps || 0) === 0 ? 'selected' : ''}>On/Off</option>
@@ -1357,9 +1377,11 @@
             <option value="5" ${(btn.speedSteps || 0) === 5 ? 'selected' : ''}>5 Speed</option>
           </select>
           ` : ''}
+          ${btn.type !== 'scene' ? `
           <div class="binding-indicator ${btn.binding ? '' : 'unbound'}" onclick="openImportModal(${btn.id})" title="${btn.binding ? 'Click to change binding' : 'Click to bind external device'}">
             ${btn.binding ? '🔗 Bound' : '+ Bind'}
           </div>
+          ` : ''}
           <button class="btn btn-sm btn-danger" onclick="removeButton(${i})" ${selectedDevice.config.buttons.length <= 2 ? 'disabled' : ''}>×</button>
         </div>
       `).join('');
@@ -1369,6 +1391,31 @@
       if (selectedDevice && selectedDevice.config.buttons[index]) {
         selectedDevice.config.buttons[index].speedSteps = steps;
         selectedDevice.config.buttons[index].speedLevel = 0;
+      }
+    }
+
+    function updateButtonSceneId(index, sceneId) {
+      if (selectedDevice && selectedDevice.config.buttons[index]) {
+        if (sceneId) {
+          selectedDevice.config.buttons[index].sceneId = sceneId;
+          // Update name to match selected scene
+          if (sceneId === '__builtin_all_off__') {
+            selectedDevice.config.buttons[index].name = 'All Off';
+            selectedDevice.config.buttons[index].icon = 'power';
+          } else if (sceneId === '__builtin_all_on__') {
+            selectedDevice.config.buttons[index].name = 'All On';
+            selectedDevice.config.buttons[index].icon = 'charge';
+          } else {
+            const globalScene = globalScenes.find(s => s.id === sceneId);
+            if (globalScene) {
+              selectedDevice.config.buttons[index].name = globalScene.name;
+              selectedDevice.config.buttons[index].icon = globalScene.icon;
+            }
+          }
+          renderButtonList();
+        } else {
+          delete selectedDevice.config.buttons[index].sceneId;
+        }
       }
     }
 

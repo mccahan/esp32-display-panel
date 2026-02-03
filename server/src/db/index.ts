@@ -47,7 +47,7 @@ export interface DayNightConfig {
 // Button configuration
 export interface ButtonConfig {
   id: number;
-  type: 'light' | 'switch' | 'fan';
+  type: 'light' | 'switch' | 'fan' | 'scene';
   name: string;
   icon: string;
   state: boolean;
@@ -56,6 +56,8 @@ export interface ButtonConfig {
   speedLevel?: number;  // Current fan speed (0-100)
   // Plugin binding for external device control
   binding?: ButtonBinding;
+  // Scene ID for scene-type buttons
+  sceneId?: string;
 }
 
 // Scene configuration (per-device, references global scene)
