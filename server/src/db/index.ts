@@ -157,24 +157,32 @@ export function loadDevices(): void {
       const parsed = JSON.parse(data);
       devices = new Map(Object.entries(parsed));
 
-      // Migrate old devices: convert host/port to reportingUrl
+      const envReportingUrl = process.env.REPORTING_URL;
       let migrated = false;
+
       for (const device of devices.values()) {
-        if (device.config?.server && !device.config.server.reportingUrl) {
-          const server = device.config.server as any;
-          if (server.host && server.port) {
-            device.config.server.reportingUrl = `http://${server.host}:${server.port}`;
-            delete server.host;
-            delete server.port;
-            migrated = true;
-            console.log(`Migrated device ${device.id} to use reportingUrl`);
-          }
+        if (!device.config?.server) continue;
+
+        const server = device.config.server as any;
+
+        // Remove legacy host/port fields if present
+        if (server.host || server.port) {
+          delete server.host;
+          delete server.port;
+          migrated = true;
+        }
+
+        // If REPORTING_URL env var is set, update all devices to use it
+        if (envReportingUrl && device.config.server.reportingUrl !== envReportingUrl) {
+          console.log(`Updating device ${device.id} reportingUrl from ${device.config.server.reportingUrl} to ${envReportingUrl}`);
+          device.config.server.reportingUrl = envReportingUrl;
+          migrated = true;
         }
       }
 
       if (migrated) {
         saveDevices();
-        console.log('Saved migrated devices');
+        console.log('Saved updated devices');
       }
 
       console.log(`Loaded ${devices.size} devices from storage`);
