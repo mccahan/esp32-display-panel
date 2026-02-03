@@ -47,85 +47,23 @@ void UIManager::requestRebuild() {
     Serial.println("UIManager: Rebuild requested (will execute in main loop)");
 }
 
-// Animation state for brightness fade during rebuild
-static bool rebuildFadeInProgress = false;
-static uint8_t rebuildTargetBrightness = 80;
-static int rebuildFadeStep = 0;  // 0=fade out, 1=rebuild, 2=fade in, 3=done
-
 void UIManager::update() {
-    if (needsRebuild && !rebuildFadeInProgress) {
+    if (needsRebuild) {
         needsRebuild = false;
-        rebuildFadeInProgress = true;
-        rebuildFadeStep = 0;
 
-        // Store target brightness before fading - use scheduled brightness if enabled
+        // Get target brightness - use scheduled brightness if enabled
         const DeviceConfig& config = configManager.getConfig();
+        uint8_t targetBrightness;
         if (config.display.schedule.enabled) {
-            // Use scheduled brightness (brightnessScheduler will determine the correct value)
-            rebuildTargetBrightness = brightnessScheduler.getTargetBrightness();
+            targetBrightness = brightnessScheduler.getTargetBrightness();
         } else {
-            rebuildTargetBrightness = config.display.brightness;
+            targetBrightness = config.display.brightness;
         }
 
-        Serial.println("UIManager: Starting rebuild with brightness fade");
-    }
-
-    // Handle multi-step rebuild with brightness animation
-    if (rebuildFadeInProgress) {
-        static unsigned long lastFadeTime = 0;
-        static uint8_t fadeValue = 0;  // Will be initialized on first use
-        static bool fadeValueInitialized = false;
-        unsigned long now = millis();
-
-        // Initialize fadeValue to current brightness at start of fade
-        if (rebuildFadeStep == 0 && !fadeValueInitialized) {
-            fadeValue = currentBrightness;
-            fadeValueInitialized = true;
-        }
-
-        switch (rebuildFadeStep) {
-            case 0:  // Fade out
-                if (now - lastFadeTime >= 10) {  // ~100 FPS smooth fade
-                    lastFadeTime = now;
-                    if (fadeValue > 0) {
-                        fadeValue = (fadeValue > 5) ? fadeValue - 5 : 0;
-                        setBrightness(fadeValue);
-                    } else {
-                        Serial.println("UIManager: Fade out complete, rebuilding UI");
-                        rebuildFadeStep = 1;
-                    }
-                }
-                break;
-
-            case 1:  // Rebuild UI (instant)
-                rebuildUI();
-                fadeValue = 0;
-                rebuildFadeStep = 2;
-                lastFadeTime = now;
-                Serial.println("UIManager: UI rebuilt, starting fade in");
-                break;
-
-            case 2:  // Fade in
-                if (now - lastFadeTime >= 10) {  // ~100 FPS smooth fade
-                    lastFadeTime = now;
-                    if (fadeValue < rebuildTargetBrightness) {
-                        uint8_t step = (rebuildTargetBrightness > fadeValue + 5) ? 5 : (rebuildTargetBrightness - fadeValue);
-                        fadeValue += step;
-                        setBrightness(fadeValue);
-                    } else {
-                        setBrightness(rebuildTargetBrightness);
-                        Serial.printf("UIManager: Fade in complete, brightness at %d%%\n", rebuildTargetBrightness);
-                        rebuildFadeStep = 3;
-                    }
-                }
-                break;
-
-            case 3:  // Done
-                rebuildFadeInProgress = false;
-                rebuildFadeStep = 0;
-                fadeValueInitialized = false;  // Reset for next rebuild
-                break;
-        }
+        Serial.println("UIManager: Rebuilding UI");
+        rebuildUI();
+        setBrightness(targetBrightness);
+        Serial.printf("UIManager: UI rebuilt, brightness at %d%%\n", targetBrightness);
     }
 }
 
