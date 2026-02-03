@@ -191,6 +191,63 @@ export function stopHealthChecks(): void {
   }
 }
 
+// Push reporting URL to a device (triggers confirmation dialog on device)
+export async function pushReportingUrlToDevice(
+  device: Device,
+  reportingUrl: string
+): Promise<boolean> {
+  try {
+    const url = `http://${device.ip}/api/server`;
+    console.log(`[DeviceService] Pushing reporting URL to ${device.name}: ${reportingUrl}`);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reportingUrl })
+    });
+
+    if (response.ok) {
+      console.log(`[DeviceService] Reporting URL push sent to ${device.name} (awaiting user confirmation)`);
+      return true;
+    }
+    console.error(`[DeviceService] Failed to push reporting URL to ${device.name}: ${response.status}`);
+    return false;
+  } catch (error) {
+    console.error(`[DeviceService] Error pushing reporting URL to ${device.name}:`, error);
+    return false;
+  }
+}
+
+// Sync reporting URL to all online devices if REPORTING_URL env var is set
+export async function syncReportingUrls(): Promise<void> {
+  const reportingUrl = process.env.REPORTING_URL;
+  if (!reportingUrl) {
+    console.log('[DeviceService] No REPORTING_URL env var set, skipping URL sync');
+    return;
+  }
+
+  console.log(`[DeviceService] Syncing reporting URL to devices: ${reportingUrl}`);
+  const devices = getAllDevices();
+
+  for (const device of devices) {
+    // Check if device's current reporting URL differs from the configured one
+    const currentUrl = device.config?.server?.reportingUrl;
+    if (currentUrl !== reportingUrl) {
+      console.log(`[DeviceService] Device ${device.name} has different URL (${currentUrl || 'none'}), pushing update`);
+
+      // First check if device is online
+      const online = await pingDevice(device);
+      if (online) {
+        await pushReportingUrlToDevice(device, reportingUrl);
+      } else {
+        console.log(`[DeviceService] Device ${device.name} is offline, skipping URL sync`);
+      }
+    } else {
+      console.log(`[DeviceService] Device ${device.name} already has correct reporting URL`);
+    }
+  }
+}
+
 // Push button state updates to a device
 export async function pushButtonStatesToDevice(
   device: Device,

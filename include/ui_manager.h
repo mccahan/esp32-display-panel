@@ -40,6 +40,19 @@ struct FanOverlayState {
     lv_obj_t* closeBtn;
 };
 
+// Server change confirmation state
+struct ServerChangeState {
+    bool pending;
+    String newReportingUrl;
+    lv_obj_t* overlay;
+    lv_obj_t* panel;
+    lv_obj_t* titleLabel;
+    lv_obj_t* messageLabel;
+    lv_obj_t* serverLabel;
+    lv_obj_t* acceptBtn;
+    lv_obj_t* rejectBtn;
+};
+
 // UI element tracking for a scene button
 struct UISceneButton {
     uint8_t sceneId;
@@ -99,6 +112,12 @@ public:
     void setFanSpeed(uint8_t buttonId, uint8_t speedLevel);
     uint8_t getFanSpeed(uint8_t buttonId) const;
 
+    // Server change confirmation
+    void showServerChangeConfirmation(const String& newReportingUrl);
+    void hideServerChangeConfirmation();
+    bool isServerChangePending() const;
+    String getPendingReportingUrl() const;
+
 private:
     // UI elements
     lv_obj_t* screen;
@@ -147,6 +166,14 @@ private:
 
     // Fan overlay state
     FanOverlayState fanOverlay;
+
+    // Server change confirmation state
+    ServerChangeState serverChangeState;
+
+    // Server change confirmation UI
+    void createServerChangeDialog();
+    static void onServerChangeAccept(lv_event_t* e);
+    static void onServerChangeReject(lv_event_t* e);
 
     // Create a single button card
     void createButtonCard(int index, const ButtonConfig& config, int gridX, int gridY);

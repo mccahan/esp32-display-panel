@@ -8,7 +8,7 @@ import actionsRouter from './routes/actions';
 import pluginsRouter from './routes/plugins';
 import scenesRouter from './routes/scenes';
 import { startDiscovery } from './services/discoveryService';
-import { startHealthChecks, stopHealthChecks } from './services/deviceService';
+import { startHealthChecks, stopHealthChecks, syncReportingUrls } from './services/deviceService';
 import { startStatePolling, stopStatePolling } from './services/stateSyncService';
 import { pluginManager } from './plugins/pluginManager';
 
@@ -67,6 +67,9 @@ async function start() {
 
     // Start state polling for external device changes (per-plugin intervals)
     startStatePolling();
+
+    // Sync reporting URL to devices if REPORTING_URL env var is set
+    syncReportingUrls();
   });
 }
 

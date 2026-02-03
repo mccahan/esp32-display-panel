@@ -1817,3 +1817,150 @@ const lv_img_dsc_t* UIManager::getIconImage(const String& iconName) {
     }
     return nullptr;
 }
+
+// ============================================================================
+// SERVER CHANGE CONFIRMATION DIALOG
+// ============================================================================
+
+void UIManager::createServerChangeDialog() {
+    // Create semi-transparent background overlay
+    serverChangeState.overlay = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(serverChangeState.overlay, SCREEN_WIDTH, SCREEN_HEIGHT);
+    lv_obj_set_pos(serverChangeState.overlay, 0, 0);
+    lv_obj_set_style_bg_color(serverChangeState.overlay, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(serverChangeState.overlay, LV_OPA_80, 0);
+    lv_obj_set_style_border_width(serverChangeState.overlay, 0, 0);
+    lv_obj_clear_flag(serverChangeState.overlay, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Create the main panel
+    serverChangeState.panel = lv_obj_create(serverChangeState.overlay);
+    lv_obj_set_size(serverChangeState.panel, 380, 280);
+    lv_obj_center(serverChangeState.panel);
+    lv_obj_clear_flag(serverChangeState.panel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(serverChangeState.panel, lv_color_hex(0x2c2c2e), 0);
+    lv_obj_set_style_bg_opa(serverChangeState.panel, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(serverChangeState.panel, 20, 0);
+    lv_obj_set_style_border_width(serverChangeState.panel, 2, 0);
+    lv_obj_set_style_border_color(serverChangeState.panel, lv_color_hex(0xff9500), 0);
+
+    // Warning icon
+    lv_obj_t* warningIcon = lv_label_create(serverChangeState.panel);
+    lv_label_set_text(warningIcon, LV_SYMBOL_WARNING);
+    lv_obj_set_style_text_font(warningIcon, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(warningIcon, lv_color_hex(0xff9500), 0);
+    lv_obj_align(warningIcon, LV_ALIGN_TOP_MID, 0, 15);
+
+    // Title
+    serverChangeState.titleLabel = lv_label_create(serverChangeState.panel);
+    lv_label_set_text(serverChangeState.titleLabel, "Server Change Request");
+    lv_obj_set_style_text_font(serverChangeState.titleLabel, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(serverChangeState.titleLabel, lv_color_white(), 0);
+    lv_obj_align(serverChangeState.titleLabel, LV_ALIGN_TOP_MID, 0, 55);
+
+    // Message
+    serverChangeState.messageLabel = lv_label_create(serverChangeState.panel);
+    lv_label_set_text(serverChangeState.messageLabel, "A server is requesting to\nchange your connection to:");
+    lv_obj_set_style_text_font(serverChangeState.messageLabel, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(serverChangeState.messageLabel, lv_color_hex(0x8e8e93), 0);
+    lv_obj_set_style_text_align(serverChangeState.messageLabel, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(serverChangeState.messageLabel, LV_ALIGN_TOP_MID, 0, 90);
+
+    // Server address display
+    serverChangeState.serverLabel = lv_label_create(serverChangeState.panel);
+    lv_label_set_text(serverChangeState.serverLabel, serverChangeState.newReportingUrl.c_str());
+    lv_obj_set_style_text_font(serverChangeState.serverLabel, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(serverChangeState.serverLabel, lv_color_hex(0x32d74b), 0);
+    lv_obj_set_width(serverChangeState.serverLabel, 340);
+    lv_label_set_long_mode(serverChangeState.serverLabel, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(serverChangeState.serverLabel, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(serverChangeState.serverLabel, LV_ALIGN_TOP_MID, 0, 140);
+
+    // Accept button
+    serverChangeState.acceptBtn = lv_btn_create(serverChangeState.panel);
+    lv_obj_set_size(serverChangeState.acceptBtn, 140, 45);
+    lv_obj_align(serverChangeState.acceptBtn, LV_ALIGN_BOTTOM_LEFT, 25, -20);
+    lv_obj_set_style_bg_color(serverChangeState.acceptBtn, lv_color_hex(0x32d74b), 0);
+    lv_obj_set_style_radius(serverChangeState.acceptBtn, 10, 0);
+    lv_obj_set_style_shadow_width(serverChangeState.acceptBtn, 0, 0);
+    lv_obj_add_event_cb(serverChangeState.acceptBtn, onServerChangeAccept, LV_EVENT_CLICKED, nullptr);
+
+    lv_obj_t* acceptLabel = lv_label_create(serverChangeState.acceptBtn);
+    lv_label_set_text(acceptLabel, "Accept");
+    lv_obj_set_style_text_font(acceptLabel, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(acceptLabel, lv_color_white(), 0);
+    lv_obj_center(acceptLabel);
+
+    // Reject button
+    serverChangeState.rejectBtn = lv_btn_create(serverChangeState.panel);
+    lv_obj_set_size(serverChangeState.rejectBtn, 140, 45);
+    lv_obj_align(serverChangeState.rejectBtn, LV_ALIGN_BOTTOM_RIGHT, -25, -20);
+    lv_obj_set_style_bg_color(serverChangeState.rejectBtn, lv_color_hex(0xff3b30), 0);
+    lv_obj_set_style_radius(serverChangeState.rejectBtn, 10, 0);
+    lv_obj_set_style_shadow_width(serverChangeState.rejectBtn, 0, 0);
+    lv_obj_add_event_cb(serverChangeState.rejectBtn, onServerChangeReject, LV_EVENT_CLICKED, nullptr);
+
+    lv_obj_t* rejectLabel = lv_label_create(serverChangeState.rejectBtn);
+    lv_label_set_text(rejectLabel, "Reject");
+    lv_obj_set_style_text_font(rejectLabel, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(rejectLabel, lv_color_white(), 0);
+    lv_obj_center(rejectLabel);
+}
+
+void UIManager::showServerChangeConfirmation(const String& newReportingUrl) {
+    // Store the pending change
+    serverChangeState.pending = true;
+    serverChangeState.newReportingUrl = newReportingUrl;
+
+    // Create and show the dialog
+    createServerChangeDialog();
+
+    Serial.printf("UIManager: Showing server change confirmation for %s\n",
+                  newReportingUrl.c_str());
+}
+
+void UIManager::hideServerChangeConfirmation() {
+    if (serverChangeState.overlay) {
+        lv_obj_del(serverChangeState.overlay);
+        serverChangeState.overlay = nullptr;
+        serverChangeState.panel = nullptr;
+        serverChangeState.titleLabel = nullptr;
+        serverChangeState.messageLabel = nullptr;
+        serverChangeState.serverLabel = nullptr;
+        serverChangeState.acceptBtn = nullptr;
+        serverChangeState.rejectBtn = nullptr;
+    }
+    serverChangeState.pending = false;
+    serverChangeState.newReportingUrl = "";
+}
+
+bool UIManager::isServerChangePending() const {
+    return serverChangeState.pending;
+}
+
+String UIManager::getPendingReportingUrl() const {
+    return serverChangeState.newReportingUrl;
+}
+
+void UIManager::onServerChangeAccept(lv_event_t* e) {
+    Serial.println("UIManager: Server change accepted by user");
+
+    // Get the pending server info
+    String newUrl = uiManager.serverChangeState.newReportingUrl;
+
+    // Update the config
+    configManager.setReportingUrl(newUrl);
+    configManager.saveConfig();
+
+    // Hide the dialog
+    uiManager.hideServerChangeConfirmation();
+
+    Serial.printf("UIManager: Server reporting URL changed to %s and saved to NVS\n",
+                  newUrl.c_str());
+}
+
+void UIManager::onServerChangeReject(lv_event_t* e) {
+    Serial.println("UIManager: Server change rejected by user");
+
+    // Just hide the dialog, don't change anything
+    uiManager.hideServerChangeConfirmation();
+}

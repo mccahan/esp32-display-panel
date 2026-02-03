@@ -389,6 +389,69 @@ void DisplayWebServer::setupRoutes() {
             request->send(200, "application/json", responseStr);
         }
     );
+
+    // API: Request server change (POST) - requires user confirmation on panel
+    server.on("/api/server", HTTP_POST,
+        [](AsyncWebServerRequest *request) {
+            // Response sent after body processed
+        },
+        NULL,
+        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            StaticJsonDocument<256> doc;
+            DeserializationError error = deserializeJson(doc, data, len);
+
+            if (error) {
+                request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+                return;
+            }
+
+            const char* reportingUrl = doc["reportingUrl"];
+
+            if (!reportingUrl || strlen(reportingUrl) == 0) {
+                request->send(400, "application/json", "{\"error\":\"reportingUrl required\"}");
+                return;
+            }
+
+            // Basic URL validation
+            String url = String(reportingUrl);
+            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                request->send(400, "application/json", "{\"error\":\"reportingUrl must start with http:// or https://\"}");
+                return;
+            }
+
+            // Check if a server change is already pending
+            if (uiManager.isServerChangePending()) {
+                request->send(409, "application/json", "{\"error\":\"Server change already pending user confirmation\"}");
+                return;
+            }
+
+            // Show confirmation dialog to user
+            uiManager.showServerChangeConfirmation(url);
+
+            StaticJsonDocument<256> response;
+            response["success"] = true;
+            response["message"] = "Server change request sent to panel for user confirmation";
+            response["reportingUrl"] = reportingUrl;
+
+            String responseStr;
+            serializeJson(response, responseStr);
+            request->send(202, "application/json", responseStr);  // 202 Accepted - pending confirmation
+        }
+    );
+
+    // API: Get current server configuration
+    server.on("/api/server", HTTP_GET, [](AsyncWebServerRequest *request) {
+        const DeviceConfig& config = configManager.getConfig();
+
+        StaticJsonDocument<256> doc;
+        doc["host"] = config.server.host;
+        doc["port"] = config.server.port;
+        doc["reportingUrl"] = config.server.reportingUrl;
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
 }
 
 String DisplayWebServer::getIndexPage() {

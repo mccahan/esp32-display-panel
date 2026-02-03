@@ -149,8 +149,7 @@ void DeviceController::sendButtonWebhook(uint8_t buttonId, bool state) {
     }
 
     const DeviceConfig& config = configManager.getConfig();
-    String url = "http://" + config.server.host + ":" + String(config.server.port) +
-                 "/api/action/light/" + String(buttonId);
+    String url = config.server.reportingUrl + "/api/action/light/" + String(buttonId);
 
     // Create payload
     StaticJsonDocument<256> doc;
@@ -180,8 +179,7 @@ void DeviceController::sendSceneWebhook(uint8_t sceneId) {
     }
 
     const DeviceConfig& config = configManager.getConfig();
-    String url = "http://" + config.server.host + ":" + String(config.server.port) +
-                 "/api/action/scene/" + String(sceneId);
+    String url = config.server.reportingUrl + "/api/action/scene/" + String(sceneId);
 
     // Create payload
     StaticJsonDocument<256> doc;
@@ -220,8 +218,7 @@ void DeviceController::reportStateToServer() {
     }
 
     const DeviceConfig& config = configManager.getConfig();
-    String url = "http://" + config.server.host + ":" + String(config.server.port) +
-                 "/api/devices/" + config.device.id + "/state";
+    String url = config.server.reportingUrl + "/api/devices/" + config.device.id + "/state";
 
     String payload = getStateJson();
     httpPost(url, payload);
@@ -312,7 +309,7 @@ void DeviceController::update() {
 
         if (WiFi.status() == WL_CONNECTED) {
             const DeviceConfig& config = configManager.getConfig();
-            String url = "http://" + config.server.host + ":" + String(config.server.port) + "/api/ping";
+            String url = config.server.reportingUrl + "/api/ping";
 
             HTTPClient http;
             http.begin(url);

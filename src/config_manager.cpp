@@ -170,6 +170,12 @@ bool ConfigManager::parseConfigJson(const String& json) {
     JsonObject server = doc["server"];
     config.server.host = server["host"] | "10.0.1.250";
     config.server.port = server["port"] | 3000;
+    config.server.reportingUrl = server["reportingUrl"] | "";
+
+    // If no reporting URL, construct from host/port for backwards compatibility
+    if (config.server.reportingUrl.length() == 0) {
+        config.server.reportingUrl = "http://" + config.server.host + ":" + String(config.server.port);
+    }
 
     configured = true;
     Serial.println("ConfigManager: Config parsed successfully");
@@ -256,6 +262,7 @@ String ConfigManager::toJson() {
     JsonObject server = doc.createNestedObject("server");
     server["host"] = config.server.host;
     server["port"] = config.server.port;
+    server["reportingUrl"] = config.server.reportingUrl;
 
     String json;
     serializeJson(doc, json);
@@ -268,8 +275,7 @@ bool ConfigManager::fetchConfigFromServer() {
         return false;
     }
 
-    String url = "http://" + config.server.host + ":" + String(config.server.port) +
-                 "/api/devices/" + getDeviceId() + "/config";
+    String url = config.server.reportingUrl + "/api/devices/" + getDeviceId() + "/config";
 
     Serial.printf("ConfigManager: Fetching config from %s\n", url.c_str());
 
@@ -308,6 +314,11 @@ DeviceConfig& ConfigManager::getConfigMutable() {
 void ConfigManager::setServerAddress(const String& host, uint16_t port) {
     config.server.host = host;
     config.server.port = port;
+    config.server.reportingUrl = "http://" + host + ":" + String(port);
+}
+
+void ConfigManager::setReportingUrl(const String& url) {
+    config.server.reportingUrl = url;
 }
 
 String ConfigManager::getDeviceId() {
@@ -416,6 +427,7 @@ void ConfigManager::createDefaultConfig() {
     // Server config
     config.server.host = "10.0.1.250";
     config.server.port = 3000;
+    config.server.reportingUrl = "http://10.0.1.250:3000";
 
     Serial.println("ConfigManager: Created default configuration");
 }

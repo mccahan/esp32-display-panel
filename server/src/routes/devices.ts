@@ -275,6 +275,51 @@ router.post('/:id/theme', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/devices/:id/server - Push server reporting URL to device (requires user confirmation)
+// Uses REPORTING_URL env var if set, otherwise uses request body
+router.post('/:id/server', async (req: Request, res: Response) => {
+  const device = getDevice(req.params.id);
+  if (!device) {
+    return res.status(404).json({ error: 'Device not found' });
+  }
+
+  // Use REPORTING_URL env var if set, otherwise use request body
+  let reportingUrl = process.env.REPORTING_URL || req.body.reportingUrl;
+
+  if (!reportingUrl || typeof reportingUrl !== 'string') {
+    return res.status(400).json({
+      error: 'reportingUrl is required (set REPORTING_URL env var or pass in body)'
+    });
+  }
+
+  // Basic URL validation
+  if (!reportingUrl.startsWith('http://') && !reportingUrl.startsWith('https://')) {
+    return res.status(400).json({ error: 'reportingUrl must start with http:// or https://' });
+  }
+
+  try {
+    const response = await fetch(`http://${device.ip}/api/server`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reportingUrl })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      res.json({
+        success: true,
+        message: 'Server change request sent to device for user confirmation',
+        reportingUrl
+      });
+    } else {
+      res.status(response.status).json(data);
+    }
+  } catch (error) {
+    res.status(503).json({ error: 'Device offline or unreachable' });
+  }
+});
+
 // ============================================================================
 // Button Binding Endpoints
 // ============================================================================
