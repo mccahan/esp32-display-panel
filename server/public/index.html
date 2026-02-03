@@ -2873,9 +2873,14 @@
 
         list.innerHTML = jobs.map(job => {
           const executeIn = job.executeAt - Date.now();
-          const executeInStr = executeIn > 0
-            ? `in ${Math.ceil(executeIn / 60000)}m`
-            : 'now';
+          let executeInStr;
+          if (executeIn <= 0) {
+            executeInStr = 'now';
+          } else if (executeIn < 60000) {
+            executeInStr = `in ${Math.ceil(executeIn / 1000)}s`;
+          } else {
+            executeInStr = `in ${Math.ceil(executeIn / 60000)}m`;
+          }
           const scheduledStr = new Date(job.scheduledAt).toLocaleTimeString();
           const targetCount = job.targetDevices?.length || 0;
 

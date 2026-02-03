@@ -9,6 +9,4 @@
 |----|------|---|-------|------|
 | #473 | 11:05 PM | 🔵 | State Synchronization Service Architecture | ~408 |
 | #472 | " | 🔵 | Device Service Communication Patterns | ~426 |
-| #318 | 9:12 PM | 🔴 | Fixed speedLevel only sent for fan-type buttons in force push | ~326 |
-| #161 | 7:06 PM | 🔵 | Device management service with HTTP communication and health monitoring | ~462 |
 </claude-mem-context>

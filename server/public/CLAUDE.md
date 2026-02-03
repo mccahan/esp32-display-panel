@@ -8,5 +8,4 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #482 | 11:07 PM | 🔵 | Web Dashboard HTML Structure and Styling | ~431 |
-| #288 | 8:43 PM | 🔵 | Moon and sun icon options added to button icon selector | ~324 |
 </claude-mem-context>
