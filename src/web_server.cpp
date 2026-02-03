@@ -420,6 +420,13 @@ void DisplayWebServer::setupRoutes() {
                 return;
             }
 
+            // Check if URL matches current configuration - no change needed
+            const DeviceConfig& config = configManager.getConfig();
+            if (url == config.server.reportingUrl) {
+                request->send(200, "application/json", "{\"success\":true,\"message\":\"URL already configured\"}");
+                return;
+            }
+
             // Check if a server change is already pending
             if (uiManager.isServerChangePending()) {
                 request->send(409, "application/json", "{\"error\":\"Server change already pending user confirmation\"}");
