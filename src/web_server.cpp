@@ -37,12 +37,15 @@ void DisplayWebServer::setupOTA() {
         Serial.println("\n========================================");
         Serial.println("OTA Update Started");
         Serial.println("========================================");
+
+        // Show the OTA update screen with spinner
+        uiManager.showOTAScreen();
     });
 
     ElegantOTA.onProgress([](size_t current, size_t total) {
         static int lastPercent = -1;
         int percent = (current * 100) / total;
-        // Only print every 10%
+        // Only log every 10% - no UI updates during OTA to avoid tearing
         if (percent / 10 != lastPercent / 10) {
             lastPercent = percent;
             Serial.printf("OTA Progress: %d%% (%u / %u bytes)\n", percent, current, total);

@@ -118,6 +118,10 @@ public:
     bool isServerChangePending() const;
     String getPendingReportingUrl() const;
 
+    // OTA update screen
+    void showOTAScreen();
+    void updateOTAProgress(int percent);
+
 private:
     // UI elements
     lv_obj_t* screen;
@@ -169,6 +173,10 @@ private:
 
     // Server change confirmation state
     ServerChangeState serverChangeState;
+
+    // OTA update screen state
+    lv_obj_t* otaScreen;
+    lv_obj_t* otaProgressLabel;
 
     // Server change confirmation UI
     void createServerChangeDialog();

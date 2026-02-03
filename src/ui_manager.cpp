@@ -29,6 +29,8 @@ UIManager::UIManager()
     , sceneCallback(nullptr)
     , currentBrightness(80)
     , needsRebuild(false)
+    , otaScreen(nullptr)
+    , otaProgressLabel(nullptr)
 {
     memset(buttonCards, 0, sizeof(buttonCards));
     memset(sceneButtons, 0, sizeof(sceneButtons));
@@ -2026,4 +2028,80 @@ void UIManager::onServerChangeReject(lv_event_t* e) {
 
     // Just hide the dialog, don't change anything
     uiManager.hideServerChangeConfirmation();
+}
+
+// ============================================================================
+// OTA UPDATE SCREEN
+// ============================================================================
+
+void UIManager::showOTAScreen() {
+    Serial.println("UIManager: Showing OTA update screen");
+
+    // Set brightness to full so user can see the update screen
+    setBrightness(100);
+
+    // Create a new screen for OTA to completely replace the UI
+    otaScreen = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(otaScreen, lv_color_hex(0x1a1a2e), 0);
+    lv_obj_set_style_bg_opa(otaScreen, LV_OPA_COVER, 0);
+    lv_obj_clear_flag(otaScreen, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Create centered container
+    lv_obj_t* container = lv_obj_create(otaScreen);
+    lv_obj_set_size(container, 300, 280);
+    lv_obj_center(container);
+    lv_obj_set_style_bg_opa(container, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(container, 0, 0);
+    lv_obj_clear_flag(container, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Static circular icon
+    lv_obj_t* iconCircle = lv_obj_create(container);
+    lv_obj_set_size(iconCircle, 80, 80);
+    lv_obj_align(iconCircle, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_set_style_radius(iconCircle, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(iconCircle, lv_color_hex(0x00d4ff), 0);
+    lv_obj_set_style_bg_opa(iconCircle, LV_OPA_20, 0);
+    lv_obj_set_style_border_width(iconCircle, 4, 0);
+    lv_obj_set_style_border_color(iconCircle, lv_color_hex(0x00d4ff), 0);
+    lv_obj_clear_flag(iconCircle, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Download arrow icon inside circle
+    lv_obj_t* iconLabel = lv_label_create(iconCircle);
+    lv_label_set_text(iconLabel, LV_SYMBOL_DOWNLOAD);
+    lv_obj_set_style_text_font(iconLabel, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(iconLabel, lv_color_hex(0x00d4ff), 0);
+    lv_obj_center(iconLabel);
+
+    // Title label
+    lv_obj_t* titleLabel = lv_label_create(container);
+    lv_label_set_text(titleLabel, "Updating Firmware");
+    lv_obj_align(titleLabel, LV_ALIGN_TOP_MID, 0, 105);
+    lv_obj_set_style_text_font(titleLabel, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(titleLabel, lv_color_hex(0x00d4ff), 0);
+
+    // Subtitle label
+    lv_obj_t* subtitleLabel = lv_label_create(container);
+    lv_label_set_text(subtitleLabel, "Please wait...");
+    lv_obj_align(subtitleLabel, LV_ALIGN_TOP_MID, 0, 145);
+    lv_obj_set_style_text_font(subtitleLabel, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(subtitleLabel, lv_color_hex(0x8e8e93), 0);
+
+    // Warning label
+    lv_obj_t* warningLabel = lv_label_create(container);
+    lv_label_set_text(warningLabel, "Do not power off");
+    lv_obj_align(warningLabel, LV_ALIGN_TOP_MID, 0, 185);
+    lv_obj_set_style_text_font(warningLabel, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(warningLabel, lv_color_hex(0xff9500), 0);
+
+    // Load the OTA screen and force immediate refresh
+    lv_scr_load(otaScreen);
+    lv_refr_now(NULL);
+}
+
+void UIManager::updateOTAProgress(int percent) {
+    if (otaProgressLabel) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "Progress: %d%%", percent);
+        lv_label_set_text(otaProgressLabel, buf);
+    }
 }
