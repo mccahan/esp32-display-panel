@@ -31,11 +31,17 @@ function shouldForcePush(deviceId: string, now: number): boolean {
 
 // Push all button states to a device (regardless of changes)
 async function pushAllStatesToDevice(device: Device): Promise<boolean> {
-  const buttonUpdates = device.config.buttons.map(btn => ({
-    id: btn.id,
-    state: btn.state,
-    speedLevel: btn.speedLevel
-  }));
+  const buttonUpdates = device.config.buttons.map(btn => {
+    const update: { id: number; state: boolean; speedLevel?: number } = {
+      id: btn.id,
+      state: btn.state
+    };
+    // Only include speedLevel for fan-type buttons
+    if (btn.type === 'fan') {
+      update.speedLevel = btn.speedLevel;
+    }
+    return update;
+  });
 
   console.log(`[StateSync] Force pushing ${buttonUpdates.length} button states to ${device.name}`);
   const success = await pushButtonStatesToDevice(device, buttonUpdates);
@@ -86,11 +92,15 @@ async function pollPluginDevices(pluginId: string): Promise<void> {
           button.speedLevel = externalState.speedLevel;
         }
 
-        buttonUpdates.push({
+        // Only include speedLevel for fan-type buttons
+        const update: { id: number; state: boolean; speedLevel?: number } = {
           id: button.id,
-          state: externalState.state,
-          speedLevel: externalState.speedLevel
-        });
+          state: externalState.state
+        };
+        if (button.type === 'fan' && externalState.speedLevel !== undefined) {
+          update.speedLevel = externalState.speedLevel;
+        }
+        buttonUpdates.push(update);
         hasChanges = true;
       }
     }
@@ -227,6 +237,64 @@ export function startStatePolling(): void {
       console.error('[StateSync] Tick error:', error);
     });
   }, TICK_INTERVAL);
+}
+
+// Sync a specific device: poll external states and push to panel
+export async function syncDevice(device: Device): Promise<{ success: boolean; updatedButtons: number }> {
+  console.log(`[StateSync] Manual sync requested for ${device.name}`);
+
+  const buttonUpdates: Array<{ id: number; state: boolean; speedLevel?: number }> = [];
+
+  // Poll all bound buttons from their plugins
+  for (const button of device.config.buttons) {
+    if (!button.binding) continue;
+
+    const externalState = await pluginManager.getDeviceState(button.binding);
+    if (externalState) {
+      // Update local state to match external
+      const changed = button.state !== externalState.state ||
+                     (externalState.speedLevel !== undefined && button.speedLevel !== externalState.speedLevel);
+
+      if (changed) {
+        console.log(`[StateSync] Sync update: "${button.name}" ${button.state} -> ${externalState.state}`);
+      }
+
+      button.state = externalState.state;
+      if (externalState.speedLevel !== undefined) {
+        button.speedLevel = externalState.speedLevel;
+      }
+    }
+
+    // Include all buttons in the update (not just changed ones)
+    // Only include speedLevel for fan-type buttons
+    const update: { id: number; state: boolean; speedLevel?: number } = {
+      id: button.id,
+      state: button.state
+    };
+    if (button.type === 'fan') {
+      update.speedLevel = button.speedLevel;
+    }
+    buttonUpdates.push(update);
+  }
+
+  // Save updated states to database
+  upsertDevice(device);
+
+  // Push all button states to the panel
+  if (device.online && device.ip) {
+    const pushed = await pushButtonStatesToDevice(device, buttonUpdates);
+    if (pushed) {
+      lastPushTime.set(device.id, Date.now());
+      console.log(`[StateSync] Manual sync complete: pushed ${buttonUpdates.length} button(s) to ${device.name}`);
+      return { success: true, updatedButtons: buttonUpdates.length };
+    } else {
+      console.log(`[StateSync] Manual sync: failed to push to ${device.name}`);
+      return { success: false, updatedButtons: 0 };
+    }
+  } else {
+    console.log(`[StateSync] Manual sync: device ${device.name} is offline, states updated in DB only`);
+    return { success: true, updatedButtons: buttonUpdates.length };
+  }
 }
 
 // Stop state polling

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const db_1 = require("../db");
 const pluginManager_1 = require("../plugins/pluginManager");
+const deviceService_1 = require("../services/deviceService");
 const router = (0, express_1.Router)();
 // Helper function to execute a scene by ID (built-in or global)
 async function executeSceneById(sceneId, device, deviceId) {
@@ -119,6 +120,13 @@ async function handleButtonAction(buttonId, deviceId, state, timestamp, speedLev
                 button.speedLevel = speedLevel;
             }
             (0, db_1.upsertDevice)(device);
+            // Push updated state to the ESP32 panel
+            if (device.ip && device.online) {
+                const buttonUpdate = { id: buttonId, state: button.state, speedLevel: button.speedLevel };
+                (0, deviceService_1.pushButtonStatesToDevice)(device, [buttonUpdate]).catch(err => {
+                    console.error(`[Action] Failed to push state to device ${device.name}:`, err);
+                });
+            }
             return { success: true, state: button.state };
         }
         else {
@@ -132,6 +140,13 @@ async function handleButtonAction(buttonId, deviceId, state, timestamp, speedLev
         button.speedLevel = speedLevel;
     }
     (0, db_1.upsertDevice)(device);
+    // Push updated state to the ESP32 panel
+    if (device.ip && device.online) {
+        const buttonUpdate = { id: buttonId, state: button.state, speedLevel: button.speedLevel };
+        (0, deviceService_1.pushButtonStatesToDevice)(device, [buttonUpdate]).catch(err => {
+            console.error(`[Action] Failed to push state to device ${device.name}:`, err);
+        });
+    }
     return { success: true, state };
 }
 // POST /api/action/light/:buttonId - Light button pressed (called by ESP32)

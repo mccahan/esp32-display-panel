@@ -733,6 +733,7 @@
 
             <div class="actions">
               <button class="btn btn-success" onclick="saveDeviceConfig()">Save & Push to Display</button>
+              <button class="btn btn-secondary" onclick="syncDeviceStates()">Sync States</button>
               <div class="actions-right">
                 <button class="btn btn-danger" onclick="deleteDevice()">Remove Display</button>
               </div>
@@ -1316,16 +1317,50 @@
       return 'on';
     }
 
-    function toggleButtonState(index) {
+    async function toggleButtonState(index) {
       if (!selectedDevice) return;
       const btn = selectedDevice.config.buttons[index];
-      btn.state = !btn.state;
-      if (!btn.state && btn.type === 'fan') {
-        btn.speedLevel = 0;
-      } else if (btn.state && btn.type === 'fan' && btn.speedSteps > 0) {
-        btn.speedLevel = 1;  // Default to low when turning on
+      const newState = !btn.state;
+
+      // Determine the action type based on button type
+      const actionType = btn.type === 'fan' ? 'fan' : (btn.type === 'switch' ? 'switch' : 'light');
+
+      try {
+        const body = {
+          deviceId: selectedDevice.id,
+          state: newState,
+          timestamp: Date.now()
+        };
+
+        // For fans, include speed level
+        if (btn.type === 'fan') {
+          body.speedLevel = newState ? (btn.speedSteps > 0 ? 1 : 0) : 0;
+        }
+
+        const response = await fetch(`/api/action/${actionType}/${btn.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        if (response.ok) {
+          // Update local state
+          btn.state = newState;
+          if (!newState && btn.type === 'fan') {
+            btn.speedLevel = 0;
+          } else if (newState && btn.type === 'fan' && btn.speedSteps > 0) {
+            btn.speedLevel = 1;
+          }
+          renderButtonList();
+          showToast(`${btn.name} turned ${newState ? 'on' : 'off'}`, 'success');
+        } else {
+          const error = await response.json();
+          showToast(error.error || 'Failed to toggle device', 'error');
+        }
+      } catch (error) {
+        console.error('Failed to toggle device:', error);
+        showToast('Failed to toggle device', 'error');
       }
-      renderButtonList();
     }
 
     function getBindingLabel(binding) {
@@ -1632,6 +1667,40 @@
       } catch (error) {
         showToast('Failed to save configuration', 'error');
         console.error(error);
+      }
+    }
+
+    // Sync device states from plugins and push to panel
+    async function syncDeviceStates() {
+      if (!selectedDevice) return;
+
+      showToast('Syncing states from plugins...', 'info');
+
+      try {
+        const response = await fetch(`/api/devices/${selectedDevice.id}/sync`, { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          showToast(result.message || 'States synced!', 'success');
+
+          // Reload device to get updated states
+          await selectDevice(selectedDevice.id, false);
+
+          // Refresh screenshot after a delay
+          setTimeout(async () => {
+            try {
+              await fetch(`/api/devices/${selectedDevice.id}/screenshot/capture`, { method: 'POST' });
+              setTimeout(refreshScreenshot, 1000);
+            } catch (e) {
+              console.error('Failed to capture screenshot:', e);
+            }
+          }, 500);
+        } else {
+          showToast(result.error || 'Failed to sync states', 'error');
+        }
+      } catch (error) {
+        console.error('Failed to sync device states:', error);
+        showToast('Failed to sync states', 'error');
       }
     }
 
@@ -1953,6 +2022,9 @@
           list.innerHTML = '<div class="empty-state">No devices found</div>';
           return;
         }
+
+        // Sort devices alphabetically by name
+        devices.sort((a, b) => a.name.localeCompare(b.name));
 
         list.innerHTML = devices.map(d => `
           <div class="external-device-item">

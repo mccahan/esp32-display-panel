@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getDevice, upsertDevice, getGlobalScene } from '../db';
 import { pluginManager } from '../plugins/pluginManager';
+import { pushButtonStatesToDevice } from '../services/deviceService';
 
 const router = Router();
 
@@ -146,6 +147,15 @@ async function handleButtonAction(
         button.speedLevel = speedLevel;
       }
       upsertDevice(device);
+
+      // Push updated state to the ESP32 panel
+      if (device.ip && device.online) {
+        const buttonUpdate = { id: buttonId, state: button.state, speedLevel: button.speedLevel };
+        pushButtonStatesToDevice(device, [buttonUpdate]).catch(err => {
+          console.error(`[Action] Failed to push state to device ${device.name}:`, err);
+        });
+      }
+
       return { success: true, state: button.state };
     } else {
       console.error(`[Action] Plugin action failed: ${result.error}`);
@@ -159,6 +169,15 @@ async function handleButtonAction(
     button.speedLevel = speedLevel;
   }
   upsertDevice(device);
+
+  // Push updated state to the ESP32 panel
+  if (device.ip && device.online) {
+    const buttonUpdate = { id: buttonId, state: button.state, speedLevel: button.speedLevel };
+    pushButtonStatesToDevice(device, [buttonUpdate]).catch(err => {
+      console.error(`[Action] Failed to push state to device ${device.name}:`, err);
+    });
+  }
+
   return { success: true, state };
 }
 

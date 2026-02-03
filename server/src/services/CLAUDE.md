@@ -7,5 +7,6 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #318 | 9:12 PM | 🔴 | Fixed speedLevel only sent for fan-type buttons in force push | ~326 |
 | #161 | 7:06 PM | 🔵 | Device management service with HTTP communication and health monitoring | ~462 |
 </claude-mem-context>

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const db_1 = require("../db");
 const deviceService_1 = require("../services/deviceService");
+const stateSyncService_1 = require("../services/stateSyncService");
 const router = (0, express_1.Router)();
 // GET /api/devices - List all adopted devices
 router.get('/', (req, res) => {
@@ -65,11 +66,17 @@ router.post('/:id/config', async (req, res) => {
     const success = await (0, deviceService_1.pushConfigToDevice)(device);
     if (success) {
         // Also push current button states to the device
-        const buttonUpdates = device.config.buttons.map(btn => ({
-            id: btn.id,
-            state: btn.state,
-            speedLevel: btn.speedLevel
-        }));
+        // Only include speedLevel for fan-type buttons
+        const buttonUpdates = device.config.buttons.map(btn => {
+            const update = {
+                id: btn.id,
+                state: btn.state
+            };
+            if (btn.type === 'fan') {
+                update.speedLevel = btn.speedLevel;
+            }
+            return update;
+        });
         await (0, deviceService_1.pushButtonStatesToDevice)(device, buttonUpdates);
         res.json({ success: true, message: 'Config and states pushed to device' });
     }
@@ -152,6 +159,27 @@ router.get('/:id/screenshot', async (req, res) => {
     }
     else {
         res.status(404).json({ error: 'No screenshot available or device offline' });
+    }
+});
+// POST /api/devices/:id/sync - Sync device states from plugins and push to panel
+router.post('/:id/sync', async (req, res) => {
+    const device = (0, db_1.getDevice)(req.params.id);
+    if (!device) {
+        return res.status(404).json({ error: 'Device not found' });
+    }
+    try {
+        const result = await (0, stateSyncService_1.syncDevice)(device);
+        res.json({
+            success: result.success,
+            updatedButtons: result.updatedButtons,
+            message: result.success
+                ? `Synced ${result.updatedButtons} button(s) to ${device.name}`
+                : 'Failed to sync device'
+        });
+    }
+    catch (error) {
+        console.error(`[Devices] Sync error for ${device.id}:`, error);
+        res.status(500).json({ error: 'Failed to sync device' });
     }
 });
 // POST /api/devices/:id/brightness - Set brightness

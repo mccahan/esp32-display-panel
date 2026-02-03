@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.startStatePolling = startStatePolling;
+exports.syncDevice = syncDevice;
 exports.stopStatePolling = stopStatePolling;
 exports.forcePluginPoll = forcePluginPoll;
 exports.forceDevicePush = forceDevicePush;
@@ -31,11 +32,17 @@ function shouldForcePush(deviceId, now) {
 }
 // Push all button states to a device (regardless of changes)
 async function pushAllStatesToDevice(device) {
-    const buttonUpdates = device.config.buttons.map(btn => ({
-        id: btn.id,
-        state: btn.state,
-        speedLevel: btn.speedLevel
-    }));
+    const buttonUpdates = device.config.buttons.map(btn => {
+        const update = {
+            id: btn.id,
+            state: btn.state
+        };
+        // Only include speedLevel for fan-type buttons
+        if (btn.type === 'fan') {
+            update.speedLevel = btn.speedLevel;
+        }
+        return update;
+    });
     console.log(`[StateSync] Force pushing ${buttonUpdates.length} button states to ${device.name}`);
     const success = await (0, deviceService_1.pushButtonStatesToDevice)(device, buttonUpdates);
     if (success) {
@@ -75,11 +82,15 @@ async function pollPluginDevices(pluginId) {
                 if (externalState.speedLevel !== undefined) {
                     button.speedLevel = externalState.speedLevel;
                 }
-                buttonUpdates.push({
+                // Only include speedLevel for fan-type buttons
+                const update = {
                     id: button.id,
-                    state: externalState.state,
-                    speedLevel: externalState.speedLevel
-                });
+                    state: externalState.state
+                };
+                if (button.type === 'fan' && externalState.speedLevel !== undefined) {
+                    update.speedLevel = externalState.speedLevel;
+                }
+                buttonUpdates.push(update);
                 hasChanges = true;
             }
         }
@@ -199,6 +210,58 @@ function startStatePolling() {
             console.error('[StateSync] Tick error:', error);
         });
     }, TICK_INTERVAL);
+}
+// Sync a specific device: poll external states and push to panel
+async function syncDevice(device) {
+    console.log(`[StateSync] Manual sync requested for ${device.name}`);
+    const buttonUpdates = [];
+    // Poll all bound buttons from their plugins
+    for (const button of device.config.buttons) {
+        if (!button.binding)
+            continue;
+        const externalState = await pluginManager_1.pluginManager.getDeviceState(button.binding);
+        if (externalState) {
+            // Update local state to match external
+            const changed = button.state !== externalState.state ||
+                (externalState.speedLevel !== undefined && button.speedLevel !== externalState.speedLevel);
+            if (changed) {
+                console.log(`[StateSync] Sync update: "${button.name}" ${button.state} -> ${externalState.state}`);
+            }
+            button.state = externalState.state;
+            if (externalState.speedLevel !== undefined) {
+                button.speedLevel = externalState.speedLevel;
+            }
+        }
+        // Include all buttons in the update (not just changed ones)
+        // Only include speedLevel for fan-type buttons
+        const update = {
+            id: button.id,
+            state: button.state
+        };
+        if (button.type === 'fan') {
+            update.speedLevel = button.speedLevel;
+        }
+        buttonUpdates.push(update);
+    }
+    // Save updated states to database
+    (0, db_1.upsertDevice)(device);
+    // Push all button states to the panel
+    if (device.online && device.ip) {
+        const pushed = await (0, deviceService_1.pushButtonStatesToDevice)(device, buttonUpdates);
+        if (pushed) {
+            lastPushTime.set(device.id, Date.now());
+            console.log(`[StateSync] Manual sync complete: pushed ${buttonUpdates.length} button(s) to ${device.name}`);
+            return { success: true, updatedButtons: buttonUpdates.length };
+        }
+        else {
+            console.log(`[StateSync] Manual sync: failed to push to ${device.name}`);
+            return { success: false, updatedButtons: 0 };
+        }
+    }
+    else {
+        console.log(`[StateSync] Manual sync: device ${device.name} is offline, states updated in DB only`);
+        return { success: true, updatedButtons: buttonUpdates.length };
+    }
 }
 // Stop state polling
 function stopStatePolling() {

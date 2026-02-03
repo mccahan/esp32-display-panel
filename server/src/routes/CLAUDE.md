@@ -7,6 +7,5 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #205 | 7:38 PM | 🟣 | Created global scenes API routes for cross-device automation | ~546 |
-| #162 | 7:06 PM | 🔵 | Device API routes support state pushing but not polling coordination | ~385 |
+| #309 | 9:07 PM | ✅ | Import syncDevice function into devices routes | ~285 |
 </claude-mem-context>
