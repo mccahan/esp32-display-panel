@@ -15,6 +15,7 @@ import { pluginManager } from './plugins/pluginManager';
 
 // Import plugins
 import homebridgePlugin from './plugins/homebridge';
+import timedDevicesPlugin from './plugins/timed-devices';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -48,6 +49,7 @@ app.get('*', (req, res) => {
 async function start() {
   // Register plugins
   pluginManager.registerPlugin(homebridgePlugin);
+  pluginManager.registerPlugin(timedDevicesPlugin);
 
   // Initialize enabled plugins
   await pluginManager.initializePlugins();

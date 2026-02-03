@@ -1794,6 +1794,8 @@ const char* UIManager::getIconSymbol(const String& iconName) {
         return LV_SYMBOL_TRASH;
     } else if (iconName == "tint" || iconName == "water" || iconName == "drop") {
         return LV_SYMBOL_TINT;
+    } else if (iconName == "timer" || iconName == "clock" || iconName == "schedule") {
+        return LV_SYMBOL_LOOP;  // Loop/repeat symbol for timed actions
     }
 
     // Default
