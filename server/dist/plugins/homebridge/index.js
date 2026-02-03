@@ -6,6 +6,7 @@ class HomebridgePlugin {
         this.name = 'Homebridge';
         this.type = 'device-provider';
         this.description = 'Import and control devices from Homebridge';
+        this.pollingInterval = 15000; // Poll Homebridge devices every 15 seconds
         this.token = null;
         this.tokenExpiry = 0;
         this.config = null;
@@ -270,7 +271,13 @@ class HomebridgePlugin {
             // Extract On characteristic value
             const onChar = accessory.serviceCharacteristics?.find(c => c.type === 'On');
             const speedChar = accessory.serviceCharacteristics?.find(c => c.type === 'RotationSpeed');
-            const state = onChar?.value === 1 || onChar?.value === true;
+            // Log raw value for debugging
+            console.log(`Homebridge: Device ${accessory.serviceName || externalDeviceId.substring(0, 12)} On.value=${onChar?.value} (type: ${typeof onChar?.value})`);
+            // Handle various value formats from Homebridge
+            let state = false;
+            if (onChar?.value !== undefined) {
+                state = onChar.value === 1 || onChar.value === true || onChar.value === '1' || onChar.value === 'true';
+            }
             const speedLevel = speedChar?.value;
             return {
                 state,

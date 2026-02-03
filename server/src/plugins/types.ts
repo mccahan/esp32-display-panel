@@ -68,6 +68,10 @@ export interface Plugin {
   // Plugin description for UI
   description?: string;
 
+  // Preferred state polling interval in milliseconds (default: 30000)
+  // Set to 0 or undefined to use the default interval
+  pollingInterval?: number;
+
   // Lifecycle methods
   initialize(config: PluginConfig): Promise<void>;
   shutdown(): Promise<void>;

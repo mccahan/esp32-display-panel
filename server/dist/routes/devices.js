@@ -64,7 +64,14 @@ router.post('/:id/config', async (req, res) => {
     }
     const success = await (0, deviceService_1.pushConfigToDevice)(device);
     if (success) {
-        res.json({ success: true, message: 'Config pushed to device' });
+        // Also push current button states to the device
+        const buttonUpdates = device.config.buttons.map(btn => ({
+            id: btn.id,
+            state: btn.state,
+            speedLevel: btn.speedLevel
+        }));
+        await (0, deviceService_1.pushButtonStatesToDevice)(device, buttonUpdates);
+        res.json({ success: true, message: 'Config and states pushed to device' });
     }
     else {
         res.status(500).json({ success: false, error: 'Failed to push config to device' });

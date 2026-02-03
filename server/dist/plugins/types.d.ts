@@ -50,6 +50,7 @@ export interface Plugin {
     name: string;
     type: 'device-provider' | 'action-handler' | 'http-action';
     description?: string;
+    pollingInterval?: number;
     initialize(config: PluginConfig): Promise<void>;
     shutdown(): Promise<void>;
     discoverDevices?(): Promise<ImportableDevice[]>;

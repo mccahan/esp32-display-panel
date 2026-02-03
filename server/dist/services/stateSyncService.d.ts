@@ -1,4 +1,5 @@
-export declare function pollAllBoundDevices(): Promise<void>;
-export declare function startStatePolling(intervalMs?: number): void;
+export declare function startStatePolling(): void;
 export declare function stopStatePolling(): void;
+export declare function forcePluginPoll(pluginId: string): Promise<void>;
+export declare function forceDevicePush(deviceId: string): Promise<void>;
 //# sourceMappingURL=stateSyncService.d.ts.map

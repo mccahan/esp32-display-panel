@@ -456,6 +456,49 @@
       padding-bottom: 5px;
       border-bottom: 1px solid #2a2a4a;
     }
+
+    /* Collapsible section styles */
+    .collapsible-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+    }
+    .collapsible-header .section-title {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+    .collapsible-header .collapse-icon {
+      color: #666;
+      font-size: 0.8em;
+      transition: transform 0.2s;
+      margin-right: 10px;
+    }
+    .collapsible-header.collapsed .collapse-icon {
+      transform: rotate(-90deg);
+    }
+    .collapsible-content {
+      overflow: hidden;
+      transition: max-height 0.3s ease, opacity 0.2s ease, margin-top 0.2s ease;
+      max-height: 500px;
+      opacity: 1;
+      margin-top: 12px;
+    }
+    .collapsible-content.collapsed {
+      max-height: 0;
+      opacity: 0;
+      margin-top: 0;
+    }
+    .collapsible-content.expanded {
+      max-height: 400px;
+      overflow-y: auto;
+    }
   </style>
 </head>
 <body>
@@ -524,11 +567,14 @@
             </div>
 
             <div class="section">
-              <div class="section-title">
-                Import External Devices
-                <button class="btn btn-sm btn-primary" onclick="discoverImportableDevices()">Discover Devices</button>
+              <div class="collapsible-header collapsed" onclick="toggleCollapsible(this)">
+                <div class="section-title">
+                  <span class="collapse-icon">▼</span>
+                  Import External Devices
+                </div>
+                <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); discoverImportableDevices(); expandCollapsible(this.parentElement);">Discover Devices</button>
               </div>
-              <div id="importable-devices-list">
+              <div id="importable-devices-list" class="collapsible-content collapsed">
                 <div class="empty-state" style="padding: 15px; color: #666;">Click "Discover Devices" to find devices from enabled plugins</div>
               </div>
             </div>
@@ -718,6 +764,127 @@
     let selectedDevice = null;
     let adoptingDeviceId = null;
 
+    // ========================================
+    // Collapsible Sections
+    // ========================================
+    function toggleCollapsible(header) {
+      header.classList.toggle('collapsed');
+      const content = header.nextElementSibling;
+      if (content && content.classList.contains('collapsible-content')) {
+        content.classList.toggle('collapsed');
+        content.classList.toggle('expanded');
+      }
+    }
+
+    function expandCollapsible(header) {
+      header.classList.remove('collapsed');
+      const content = header.nextElementSibling;
+      if (content && content.classList.contains('collapsible-content')) {
+        content.classList.remove('collapsed');
+        content.classList.add('expanded');
+      }
+    }
+
+    // ========================================
+    // Deep-link Routing
+    // ========================================
+    function navigateTo(path, replace = false) {
+      if (replace) {
+        history.replaceState(null, '', '#' + path);
+      } else {
+        history.pushState(null, '', '#' + path);
+      }
+      handleRoute();
+    }
+
+    function handleRoute() {
+      const hash = window.location.hash.slice(1) || '/';
+      const parts = hash.split('/').filter(Boolean);
+
+      if (parts.length === 0 || parts[0] === '') {
+        // Default: show devices tab
+        switchTab('devices');
+        return;
+      }
+
+      const route = parts[0];
+
+      switch (route) {
+        case 'device':
+          switchTab('devices');
+          if (parts[1]) {
+            // Wait for devices to load, then select the device
+            const deviceId = decodeURIComponent(parts[1]);
+            waitForDevicesAndSelect(deviceId);
+          }
+          break;
+
+        case 'discover':
+          switchTab('discover');
+          loadDiscoveredDevices();
+          break;
+
+        case 'plugins':
+          switchTab('plugins');
+          if (parts[1]) {
+            const pluginId = decodeURIComponent(parts[1]);
+            waitForPluginsAndSelect(pluginId);
+          } else {
+            loadPlugins();
+          }
+          break;
+
+        default:
+          switchTab('devices');
+      }
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      const tab = document.querySelector(`.tab[data-tab="${tabName}"]`);
+      if (tab) tab.classList.add('active');
+
+      document.getElementById('tab-devices').classList.toggle('hidden', tabName !== 'devices');
+      document.getElementById('tab-discover').classList.toggle('hidden', tabName !== 'discover');
+      document.getElementById('tab-plugins').classList.toggle('hidden', tabName !== 'plugins');
+    }
+
+    async function waitForDevicesAndSelect(deviceId) {
+      // If devices already loaded, select immediately
+      if (devices.length > 0) {
+        const device = devices.find(d => d.id === deviceId);
+        if (device) {
+          selectDevice(deviceId, false);  // Don't update URL, we're already there
+        }
+        return;
+      }
+
+      // Wait for devices to load
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        if (devices.length > 0 || attempts > 20) {
+          clearInterval(interval);
+          const device = devices.find(d => d.id === deviceId);
+          if (device) {
+            selectDevice(deviceId, false);  // Don't update URL, we're already there
+          }
+        }
+      }, 100);
+    }
+
+    async function waitForPluginsAndSelect(pluginId) {
+      // Ensure plugins are loaded first
+      await loadPlugins();
+      const plugin = plugins.find(p => p.id === pluginId);
+      if (plugin) {
+        selectPlugin(pluginId, false);  // Don't update URL, we're already there
+      }
+    }
+
+    // Listen for browser back/forward navigation
+    window.addEventListener('popstate', handleRoute);
+
     // Toast notifications
     function showToast(message, type = 'info') {
       const toast = document.createElement('div');
@@ -727,21 +894,26 @@
       setTimeout(() => toast.remove(), 3000);
     }
 
-    // Tab switching
+    // Tab switching with URL update
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
+        const tabName = tab.dataset.tab;
 
-        document.getElementById('tab-devices').classList.toggle('hidden', tab.dataset.tab !== 'devices');
-        document.getElementById('tab-discover').classList.toggle('hidden', tab.dataset.tab !== 'discover');
-        document.getElementById('tab-plugins').classList.toggle('hidden', tab.dataset.tab !== 'plugins');
-
-        if (tab.dataset.tab === 'discover') {
-          loadDiscoveredDevices();
-        }
-        if (tab.dataset.tab === 'plugins') {
-          loadPlugins();
+        // Update URL based on tab
+        if (tabName === 'devices') {
+          if (selectedDevice) {
+            navigateTo(`/device/${encodeURIComponent(selectedDevice.id)}`);
+          } else {
+            navigateTo('/');
+          }
+        } else if (tabName === 'discover') {
+          navigateTo('/discover');
+        } else if (tabName === 'plugins') {
+          if (selectedPlugin) {
+            navigateTo(`/plugins/${encodeURIComponent(selectedPlugin.id)}`);
+          } else {
+            navigateTo('/plugins');
+          }
         }
       });
     });
@@ -779,10 +951,15 @@
       `).join('');
     }
 
-    async function selectDevice(id) {
+    async function selectDevice(id, updateUrl = true) {
       try {
         const response = await fetch(`/api/devices/${id}`);
         selectedDevice = await response.json();
+
+        // Update URL to reflect selected device
+        if (updateUrl) {
+          navigateTo(`/device/${encodeURIComponent(id)}`, true);
+        }
 
         document.getElementById('device-detail').classList.remove('hidden');
         document.getElementById('no-device-selected').classList.add('hidden');
@@ -1083,6 +1260,7 @@
         selectedDevice = null;
         document.getElementById('device-detail').classList.add('hidden');
         document.getElementById('no-device-selected').classList.remove('hidden');
+        navigateTo('/', true);  // Clear device from URL
         loadDevices();
         showToast('Device removed', 'success');
       } catch (error) {
@@ -1207,10 +1385,15 @@
       `).join('');
     }
 
-    async function selectPlugin(id) {
+    async function selectPlugin(id, updateUrl = true) {
       try {
         const response = await fetch(`/api/plugins/${id}`);
         selectedPlugin = await response.json();
+
+        // Update URL to reflect selected plugin
+        if (updateUrl) {
+          navigateTo(`/plugins/${encodeURIComponent(id)}`, true);
+        }
 
         document.getElementById('plugin-config').classList.remove('hidden');
         document.getElementById('no-plugin-selected').classList.add('hidden');
@@ -1658,6 +1841,9 @@
     // Initial load
     loadDevices();
     setInterval(loadDevices, 30000);
+
+    // Handle initial route on page load
+    handleRoute();
   </script>
 </body>
 </html>

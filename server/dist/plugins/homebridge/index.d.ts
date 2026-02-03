@@ -4,6 +4,7 @@ declare class HomebridgePlugin implements Plugin {
     name: string;
     type: 'device-provider';
     description: string;
+    pollingInterval: number;
     private token;
     private tokenExpiry;
     private config;

@@ -12,7 +12,8 @@ import {
   fetchDeviceState,
   updateDeviceConfig,
   captureDeviceScreenshot,
-  getDeviceScreenshot
+  getDeviceScreenshot,
+  pushButtonStatesToDevice
 } from '../services/deviceService';
 
 const router = Router();
@@ -87,7 +88,15 @@ router.post('/:id/config', async (req: Request, res: Response) => {
 
   const success = await pushConfigToDevice(device);
   if (success) {
-    res.json({ success: true, message: 'Config pushed to device' });
+    // Also push current button states to the device
+    const buttonUpdates = device.config.buttons.map(btn => ({
+      id: btn.id,
+      state: btn.state,
+      speedLevel: btn.speedLevel
+    }));
+    await pushButtonStatesToDevice(device, buttonUpdates);
+
+    res.json({ success: true, message: 'Config and states pushed to device' });
   } else {
     res.status(500).json({ success: false, error: 'Failed to push config to device' });
   }

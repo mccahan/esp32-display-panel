@@ -63,8 +63,8 @@ async function start() {
     // Start periodic health checks (every 60 seconds)
     startHealthChecks(60000);
 
-    // Start state polling for external device changes (every 30 seconds)
-    startStatePolling(30000);
+    // Start state polling for external device changes (per-plugin intervals)
+    startStatePolling();
   });
 }
 

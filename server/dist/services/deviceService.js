@@ -179,21 +179,24 @@ function stopHealthChecks() {
 async function pushButtonStatesToDevice(device, buttonUpdates) {
     try {
         const url = `http://${device.ip}/api/state/buttons`;
+        const body = JSON.stringify({ buttons: buttonUpdates });
+        console.log(`[DeviceService] Pushing states to ${device.name} (${device.ip}): ${body}`);
         const response = await (0, node_fetch_1.default)(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ buttons: buttonUpdates })
+            body
         });
         if (response.ok) {
             device.lastSeen = Date.now();
             device.online = true;
+            console.log(`[DeviceService] Successfully pushed states to ${device.name}`);
             return true;
         }
-        console.error(`Failed to push button states to ${device.name}: ${response.status}`);
+        console.error(`[DeviceService] Failed to push button states to ${device.name}: ${response.status}`);
         return false;
     }
     catch (error) {
-        console.error(`Error pushing button states to ${device.name}:`, error);
+        console.error(`[DeviceService] Error pushing button states to ${device.name}:`, error);
         device.online = false;
         return false;
     }
