@@ -87,22 +87,130 @@ Key functions:
 
 ### Plugin System
 
-Plugins implement the `Plugin` interface:
+Plugins are located in `server/src/plugins/` and provide integrations with external smart home systems.
+
+#### Creating a New Plugin
+
+1. **Create plugin directory**: `server/src/plugins/my-plugin/`
+
+2. **Implement the Plugin interface** in `index.ts`:
 
 ```typescript
-interface Plugin {
-  id: string;
-  name: string;
-  type: 'device-provider' | 'action-handler' | 'http-action';
-  pollingInterval?: number;  // ms, default 30000
+import { Plugin, PluginConfig, ImportableDevice, ActionContext, ActionResult, DeviceState } from '../types';
 
-  initialize(config: PluginConfig): Promise<void>;
-  shutdown(): Promise<void>;
-  discoverDevices?(): Promise<ImportableDevice[]>;
-  executeAction?(ctx: ActionContext): Promise<ActionResult>;
-  getDeviceState?(externalDeviceId: string): Promise<DeviceState | null>;
+class MyPlugin implements Plugin {
+  id = 'my-plugin';           // Unique identifier (used in bindings)
+  name = 'My Plugin';         // Display name in admin UI
+  type: 'device-provider' = 'device-provider';
+  description = 'Description for admin UI';
+  pollingInterval = 30000;    // State polling interval (ms), default 30000
+
+  private config: PluginConfig | null = null;
+
+  async initialize(config: PluginConfig): Promise<void> {
+    this.config = config;
+    // Access settings via config.settings.myKey
+    console.log(`[MyPlugin] Initialized`);
+  }
+
+  async shutdown(): Promise<void> {
+    this.config = null;
+  }
+
+  // Return devices that can be bound to ESP32 buttons
+  async discoverDevices(): Promise<ImportableDevice[]> {
+    return [{
+      id: 'device-123',
+      name: 'My Device',
+      type: 'switch',  // 'light' | 'switch' | 'fan' | 'outlet'
+      room: 'Living Room',
+      capabilities: { on: true, brightness: false, speed: false },
+      metadata: { /* plugin-specific data */ }
+    }];
+  }
+
+  // Execute button press action
+  async executeAction(ctx: ActionContext): Promise<ActionResult> {
+    const { binding, newState, speedLevel } = ctx;
+    // binding.externalDeviceId - the device to control
+    // binding.metadata - data from discoverDevices
+    // newState - true=on, false=off
+    // speedLevel - fan speed (0-100) if applicable
+
+    try {
+      // Call external API...
+      return { success: true, newState };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Return current device state (called during polling)
+  async getDeviceState(externalDeviceId: string): Promise<DeviceState | null> {
+    // Fetch from external system
+    return { state: true, speedLevel: undefined };
+  }
+
+  // Optional: test connection button in admin UI
+  async testConnection(): Promise<{ success: boolean; message: string }> {
+    return { success: true, message: 'Connected!' };
+  }
+}
+
+export default new MyPlugin();
+```
+
+3. **Register the plugin** in `server/src/index.ts`:
+
+```typescript
+import myPlugin from './plugins/my-plugin';
+// In main():
+pluginManager.registerPlugin(myPlugin);
+```
+
+4. **Add routes** (optional) in `server/src/routes/plugins.ts` for custom configuration UI.
+
+#### Plugin Types
+
+| Type | Purpose |
+|------|---------|
+| `device-provider` | Discovers external devices, handles actions, polls state |
+| `action-handler` | Only executes actions (no device discovery) |
+| `http-action` | Simple HTTP request plugins using `getHttpConfig()` |
+
+#### Key Interfaces
+
+```typescript
+interface ImportableDevice {
+  id: string;           // External device ID
+  name: string;
+  type: 'light' | 'switch' | 'fan' | 'outlet';
+  room?: string;
+  capabilities: { on: boolean; brightness?: boolean; speed?: boolean };
+  metadata: Record<string, any>;  // Stored in button binding
+}
+
+interface ActionContext {
+  deviceId: string;     // ESP32 device ID
+  buttonId: number;
+  binding: ButtonBinding;
+  newState: boolean;
+  speedLevel?: number;
+  timestamp: number;
+}
+
+interface DeviceState {
+  state: boolean;
+  speedLevel?: number;  // 0-100 for fans
 }
 ```
+
+#### Existing Plugins
+
+| Plugin | Directory | Purpose |
+|--------|-----------|---------|
+| Homebridge | `homebridge/` | Integrates with Homebridge API for HomeKit devices |
+| Timed Devices | `timed-devices/` | Creates buttons with scheduled on/off actions |
 
 ### Admin Dashboard Routes
 
