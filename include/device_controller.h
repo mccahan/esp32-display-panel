@@ -2,7 +2,16 @@
 #define DEVICE_CONTROLLER_H
 
 #include <Arduino.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/semphr.h>
 #include "config_manager.h"
+
+// Async HTTP request structure
+struct HttpRequest {
+    char url[256];
+    char payload[512];
+};
 
 class DeviceController {
 public:
@@ -35,6 +44,9 @@ public:
     // Periodic tasks (call from main loop)
     void update();
 
+    // HTTP worker task (public for FreeRTOS callback)
+    static void httpWorkerTask(void* parameter);
+
 private:
     // Send webhook for button action
     void sendButtonWebhook(uint8_t buttonId, bool state);
@@ -54,6 +66,11 @@ private:
     // Rate limiting for webhooks
     unsigned long lastWebhookTime;
     static const unsigned long WEBHOOK_MIN_INTERVAL = 100;  // 100ms between webhooks
+
+    // Async HTTP queue (single worker, prevents socket exhaustion)
+    static const int HTTP_QUEUE_SIZE = 3;
+    QueueHandle_t httpQueue;
+    TaskHandle_t httpWorkerHandle;
 };
 
 // Global instance

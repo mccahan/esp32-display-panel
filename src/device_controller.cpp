@@ -7,44 +7,71 @@
 // Global instance
 DeviceController deviceController;
 
-// Async HTTP POST task data
-struct AsyncHttpPostData {
-    char url[256];
-    char payload[512];
-};
+// HTTP worker task - processes requests from queue one at a time
+void DeviceController::httpWorkerTask(void* parameter) {
+    DeviceController* controller = (DeviceController*)parameter;
+    HttpRequest request;
 
-// FreeRTOS task for async HTTP POST
-void asyncHttpPostTask(void* parameter) {
-    AsyncHttpPostData* data = (AsyncHttpPostData*)parameter;
+    while (true) {
+        // Wait for a request (blocks until available)
+        if (xQueueReceive(controller->httpQueue, &request, portMAX_DELAY) == pdTRUE) {
+            // Check WiFi before attempting connection
+            if (WiFi.status() != WL_CONNECTED) {
+                Serial.println("DeviceController: WiFi not connected, dropping request");
+                continue;
+            }
 
-    HTTPClient http;
-    http.begin(data->url);
-    http.addHeader("Content-Type", "application/json");
-    http.setTimeout(2000);
+            HTTPClient http;
+            http.begin(request.url);
+            http.addHeader("Content-Type", "application/json");
+            http.setTimeout(3000);  // 3 second timeout
+            http.setReuse(false);   // Don't reuse connections (cleaner socket management)
 
-    int httpCode = http.POST(data->payload);
-    http.end();
+            int httpCode = http.POST(request.payload);
 
-    if (httpCode > 0) {
-        Serial.printf("DeviceController: Async POST %s -> %d\n", data->url, httpCode);
-    } else {
-        Serial.printf("DeviceController: Async POST failed: %d\n", httpCode);
+            if (httpCode > 0) {
+                Serial.printf("DeviceController: POST %s -> %d\n", request.url, httpCode);
+            } else {
+                Serial.printf("DeviceController: POST failed: %d (%s)\n",
+                    httpCode, http.errorToString(httpCode).c_str());
+            }
+
+            http.end();
+
+            // Small delay between requests to let sockets fully close
+            vTaskDelay(pdMS_TO_TICKS(50));
+        }
     }
-
-    // Clean up and delete task
-    delete data;
-    vTaskDelete(NULL);
 }
 
 DeviceController::DeviceController()
     : serverConnected(false)
     , lastServerCheck(0)
     , lastWebhookTime(0)
+    , httpQueue(nullptr)
+    , httpWorkerHandle(nullptr)
 {
 }
 
 void DeviceController::begin() {
     Serial.println("DeviceController: Initializing...");
+
+    // Create HTTP request queue (small queue - we only care about latest state)
+    httpQueue = xQueueCreate(HTTP_QUEUE_SIZE, sizeof(HttpRequest));
+    if (httpQueue == nullptr) {
+        Serial.println("DeviceController: Failed to create HTTP queue!");
+    }
+
+    // Create single HTTP worker task
+    xTaskCreatePinnedToCore(
+        httpWorkerTask,
+        "HTTPWorker",
+        4096,
+        this,
+        1,  // Low priority
+        &httpWorkerHandle,
+        1   // Run on core 1 (leave core 0 for WiFi)
+    );
 
     // Register callbacks with UI manager
     uiManager.setButtonCallback([](uint8_t buttonId, bool newState) {
@@ -55,7 +82,7 @@ void DeviceController::begin() {
         deviceController.onSceneActivated(sceneId);
     });
 
-    Serial.println("DeviceController: Initialized");
+    Serial.println("DeviceController: Initialized with HTTP worker task");
 }
 
 void DeviceController::onButtonStateChanged(uint8_t buttonId, bool newState) {
@@ -117,22 +144,23 @@ void DeviceController::setAllButtons(bool state) {
 }
 
 void DeviceController::httpPostAsync(const String& url, const String& payload) {
-    // Allocate data for the async task
-    AsyncHttpPostData* data = new AsyncHttpPostData();
-    strncpy(data->url, url.c_str(), sizeof(data->url) - 1);
-    data->url[sizeof(data->url) - 1] = '\0';
-    strncpy(data->payload, payload.c_str(), sizeof(data->payload) - 1);
-    data->payload[sizeof(data->payload) - 1] = '\0';
+    if (httpQueue == nullptr) {
+        Serial.println("DeviceController: HTTP queue not initialized");
+        return;
+    }
 
-    // Create task with minimal stack (HTTP client needs ~4KB)
-    xTaskCreate(
-        asyncHttpPostTask,
-        "AsyncHTTP",
-        4096,
-        data,
-        1,  // Low priority
-        NULL
-    );
+    // Prepare request
+    HttpRequest request;
+    strncpy(request.url, url.c_str(), sizeof(request.url) - 1);
+    request.url[sizeof(request.url) - 1] = '\0';
+    strncpy(request.payload, payload.c_str(), sizeof(request.payload) - 1);
+    request.payload[sizeof(request.payload) - 1] = '\0';
+
+    // Try to add to queue (don't block if full - just drop the request)
+    // The state sync service will catch up with correct state anyway
+    if (xQueueSend(httpQueue, &request, 0) != pdTRUE) {
+        Serial.println("DeviceController: HTTP queue full, dropping request");
+    }
 }
 
 void DeviceController::sendButtonWebhook(uint8_t buttonId, bool state) {
