@@ -6,6 +6,134 @@ import timedDevicesPlugin from '../plugins/timed-devices';
 
 const router = Router();
 
+// =============================================
+// Timed Devices Plugin Routes
+// IMPORTANT: These must be defined BEFORE generic /:id routes
+// =============================================
+
+// GET /api/plugins/timed-devices/timed-devices - Get all timed device configs
+router.get('/timed-devices/timed-devices', (req: Request, res: Response) => {
+  try {
+    const timedDevices = timedDevicesPlugin.getTimedDeviceConfigs();
+    res.json(timedDevices);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/plugins/timed-devices/source-devices - Discover devices from other plugins
+router.get('/timed-devices/source-devices', async (req: Request, res: Response) => {
+  try {
+    const devices = await timedDevicesPlugin.discoverSourceDevices();
+    res.json(devices);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/plugins/timed-devices/timed-devices - Create a new timed device
+router.post('/timed-devices/timed-devices', async (req: Request, res: Response) => {
+  try {
+    const { name, icon, actionType, durationMinutes, targetDevices } = req.body;
+
+    if (!name || !actionType || !durationMinutes || !targetDevices || targetDevices.length === 0) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const timedDevice = await timedDevicesPlugin.createTimedDevice({
+      name,
+      icon: icon || 'timer',
+      actionType,
+      durationMinutes,
+      targetDevices
+    });
+
+    res.json(timedDevice);
+  } catch (error: any) {
+    console.error('Failed to create timed device:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/plugins/timed-devices/timed-devices/:timedDeviceId - Update a timed device
+router.put('/timed-devices/timed-devices/:timedDeviceId', async (req: Request, res: Response) => {
+  try {
+    const { name, icon, actionType, durationMinutes, targetDevices } = req.body;
+
+    const updated = await timedDevicesPlugin.updateTimedDevice(req.params.timedDeviceId, {
+      name,
+      icon,
+      actionType,
+      durationMinutes,
+      targetDevices
+    });
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Timed device not found' });
+    }
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Failed to update timed device:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/plugins/timed-devices/timed-devices/:timedDeviceId - Delete a timed device
+router.delete('/timed-devices/timed-devices/:timedDeviceId', async (req: Request, res: Response) => {
+  try {
+    const deleted = await timedDevicesPlugin.deleteTimedDevice(req.params.timedDeviceId);
+
+    if (!deleted) {
+      return res.status(404).json({ error: 'Timed device not found' });
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Failed to delete timed device:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/plugins/timed-devices/jobs - Get all scheduled jobs
+router.get('/timed-devices/jobs', (req: Request, res: Response) => {
+  try {
+    const jobs = timedDevicesPlugin.getScheduledJobs();
+    res.json(jobs);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/plugins/timed-devices/jobs/active - Get active jobs only
+router.get('/timed-devices/jobs/active', (req: Request, res: Response) => {
+  try {
+    const jobs = timedDevicesPlugin.getActiveJobs();
+    res.json(jobs);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/plugins/timed-devices/jobs/:jobId - Cancel a job
+router.delete('/timed-devices/jobs/:jobId', (req: Request, res: Response) => {
+  try {
+    const cancelled = timedDevicesPlugin.cancelJob(req.params.jobId);
+
+    if (!cancelled) {
+      return res.status(404).json({ error: 'Job not found or already completed' });
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// =============================================
+// Generic Plugin Routes
+// =============================================
+
 // GET /api/plugins/:id/ui - Get plugin configuration UI
 router.get('/:id/ui', (req: Request, res: Response) => {
   const pluginId = req.params.id;
@@ -145,129 +273,6 @@ router.post('/:id/test', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Connection test failed:', error);
     res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// =============================================
-// Timed Devices Plugin Routes
-// =============================================
-
-// GET /api/plugins/timed-devices/timed-devices - Get all timed device configs
-router.get('/timed-devices/timed-devices', (req: Request, res: Response) => {
-  try {
-    const timedDevices = timedDevicesPlugin.getTimedDeviceConfigs();
-    res.json(timedDevices);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// GET /api/plugins/timed-devices/source-devices - Discover devices from other plugins
-router.get('/timed-devices/source-devices', async (req: Request, res: Response) => {
-  try {
-    const devices = await timedDevicesPlugin.discoverSourceDevices();
-    res.json(devices);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// POST /api/plugins/timed-devices/timed-devices - Create a new timed device
-router.post('/timed-devices/timed-devices', async (req: Request, res: Response) => {
-  try {
-    const { name, icon, actionType, durationMinutes, targetDevices } = req.body;
-
-    if (!name || !actionType || !durationMinutes || !targetDevices || targetDevices.length === 0) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const timedDevice = await timedDevicesPlugin.createTimedDevice({
-      name,
-      icon: icon || 'timer',
-      actionType,
-      durationMinutes,
-      targetDevices
-    });
-
-    res.json(timedDevice);
-  } catch (error: any) {
-    console.error('Failed to create timed device:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// PUT /api/plugins/timed-devices/timed-devices/:timedDeviceId - Update a timed device
-router.put('/timed-devices/timed-devices/:timedDeviceId', async (req: Request, res: Response) => {
-  try {
-    const { name, icon, actionType, durationMinutes, targetDevices } = req.body;
-
-    const updated = await timedDevicesPlugin.updateTimedDevice(req.params.timedDeviceId, {
-      name,
-      icon,
-      actionType,
-      durationMinutes,
-      targetDevices
-    });
-
-    if (!updated) {
-      return res.status(404).json({ error: 'Timed device not found' });
-    }
-
-    res.json(updated);
-  } catch (error: any) {
-    console.error('Failed to update timed device:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// DELETE /api/plugins/timed-devices/timed-devices/:timedDeviceId - Delete a timed device
-router.delete('/timed-devices/timed-devices/:timedDeviceId', async (req: Request, res: Response) => {
-  try {
-    const deleted = await timedDevicesPlugin.deleteTimedDevice(req.params.timedDeviceId);
-
-    if (!deleted) {
-      return res.status(404).json({ error: 'Timed device not found' });
-    }
-
-    res.json({ success: true });
-  } catch (error: any) {
-    console.error('Failed to delete timed device:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// GET /api/plugins/timed-devices/jobs - Get all scheduled jobs
-router.get('/timed-devices/jobs', (req: Request, res: Response) => {
-  try {
-    const jobs = timedDevicesPlugin.getScheduledJobs();
-    res.json(jobs);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// GET /api/plugins/timed-devices/jobs/active - Get active jobs only
-router.get('/timed-devices/jobs/active', (req: Request, res: Response) => {
-  try {
-    const jobs = timedDevicesPlugin.getActiveJobs();
-    res.json(jobs);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// DELETE /api/plugins/timed-devices/jobs/:jobId - Cancel a job
-router.delete('/timed-devices/jobs/:jobId', (req: Request, res: Response) => {
-  try {
-    const cancelled = timedDevicesPlugin.cancelJob(req.params.jobId);
-
-    if (!cancelled) {
-      return res.status(404).json({ error: 'Job not found or already completed' });
-    }
-
-    res.json({ success: true });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
   }
 });
 
