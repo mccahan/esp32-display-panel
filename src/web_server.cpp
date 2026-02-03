@@ -632,7 +632,7 @@ String DisplayWebServer::getIndexPage() {
                         <div class="info-label">IP Address</div>
                         <div class="info-value">${data.ip_address}</div>
                     </div>
-                    <div class="info-item">
+                    <div class="info-item" style="grid-column: span 2;">
                         <div class="info-label">Reporting URL</div>
                         <div class="info-value" style="font-size: 0.9em; word-break: break-all;">${data.reporting_url || 'Not configured'}</div>
                     </div>
