@@ -255,6 +255,19 @@ header p { color: #888; font-size: 0.9em; margin-top: 5px; }
   border: 2px solid #2a2a4a;
 }
 
+/* Loading Spinner */
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #2a2a4a;
+  border-top-color: #00d4ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .empty-state {
   text-align: center;
   padding: 40px;

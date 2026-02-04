@@ -10,21 +10,66 @@ export function showToast(message, type = 'info') {
 
 // Collapsible sections
 export function toggleCollapsible(header) {
+  const wasCollapsed = header.classList.contains('collapsed');
   header.classList.toggle('collapsed');
   const content = header.nextElementSibling;
   if (content && content.classList.contains('collapsible-content')) {
     content.classList.toggle('collapsed');
     content.classList.toggle('expanded');
+    // Scroll into view when expanding
+    if (wasCollapsed) {
+      scrollCollapsibleIntoView(header, content);
+    }
   }
 }
 
 export function expandCollapsible(header) {
+  const wasCollapsed = header.classList.contains('collapsed');
   header.classList.remove('collapsed');
   const content = header.nextElementSibling;
   if (content && content.classList.contains('collapsible-content')) {
     content.classList.remove('collapsed');
     content.classList.add('expanded');
+    // Scroll into view when expanding
+    if (wasCollapsed) {
+      scrollCollapsibleIntoView(header, content);
+    }
   }
+}
+
+function scrollCollapsibleIntoView(header, content) {
+  const startTime = performance.now();
+  const duration = 300; // Match CSS transition duration
+
+  function scrollStep() {
+    const elapsed = performance.now() - startTime;
+    const headerRect = header.getBoundingClientRect();
+    const contentRect = content.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+
+    // Total height of header + content
+    const totalHeight = headerRect.height + contentRect.height;
+
+    // Check if bottom of content is below viewport
+    const bottomOverflow = contentRect.bottom - (viewportHeight - 20);
+
+    if (bottomOverflow > 0) {
+      // If whole section fits, scroll to show it all; otherwise keep header at top
+      if (totalHeight <= viewportHeight - 40) {
+        window.scrollBy({ top: bottomOverflow, behavior: 'auto' });
+      } else if (headerRect.top > 80) {
+        // Content too tall - scroll header toward top
+        window.scrollBy({ top: Math.min(bottomOverflow, headerRect.top - 80), behavior: 'auto' });
+      }
+    }
+
+    // Keep scrolling during the animation
+    if (elapsed < duration) {
+      requestAnimationFrame(scrollStep);
+    }
+  }
+
+  requestAnimationFrame(scrollStep);
 }
 
 export function collapseCollapsible(header) {

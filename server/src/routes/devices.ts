@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { Jimp } from 'jimp';
 import {
   getAllDevices,
   getDevice,
@@ -184,7 +185,7 @@ router.post('/:id/screenshot/capture', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/devices/:id/screenshot - Get screenshot from device (proxy)
+// GET /api/devices/:id/screenshot - Get screenshot from device (proxy, auto-converts BMP to PNG)
 router.get('/:id/screenshot', async (req: Request, res: Response) => {
   const device = getDevice(req.params.id);
   if (!device) {
@@ -193,9 +194,21 @@ router.get('/:id/screenshot', async (req: Request, res: Response) => {
 
   const screenshot = await getDeviceScreenshot(device);
   if (screenshot) {
-    res.set('Content-Type', 'image/bmp');
-    res.set('Content-Disposition', `inline; filename="${device.id}-screenshot.bmp"`);
-    res.send(screenshot);
+    try {
+      // Convert BMP to PNG using Jimp
+      const image = await Jimp.read(screenshot);
+      const pngBuffer = await image.getBuffer('image/png');
+      res.set('Content-Type', 'image/png');
+      res.set('Content-Disposition', `inline; filename="${device.id}-screenshot.png"`);
+      res.set('Cache-Control', 'no-cache');
+      res.send(pngBuffer);
+    } catch (err) {
+      console.error(`Failed to convert screenshot to PNG:`, err);
+      // Fallback to BMP if conversion fails
+      res.set('Content-Type', 'image/bmp');
+      res.set('Content-Disposition', `inline; filename="${device.id}-screenshot.bmp"`);
+      res.send(screenshot);
+    }
   } else {
     res.status(404).json({ error: 'No screenshot available or device offline' });
   }

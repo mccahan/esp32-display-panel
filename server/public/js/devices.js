@@ -803,16 +803,33 @@ export function refreshScreenshot() {
 
   const img = document.getElementById('device-screenshot');
   const noScreenshot = document.getElementById('no-screenshot');
+  const spinner = document.getElementById('screenshot-spinner');
+  const container = document.querySelector('.screenshot-container');
+
+  // Preserve container size to prevent layout shift
+  const hadImage = img.style.display !== 'none' && img.naturalHeight > 0;
+  if (hadImage) {
+    container.style.minHeight = `${img.offsetHeight + 30}px`; // +30 for padding
+  }
+
+  // Show spinner, hide others
+  spinner.style.display = 'block';
+  img.style.display = 'none';
+  noScreenshot.style.display = 'none';
 
   img.src = `/api/devices/${selectedDevice.id}/screenshot?t=${Date.now()}`;
   img.onload = () => {
+    spinner.style.display = 'none';
     img.style.display = 'block';
     noScreenshot.style.display = 'none';
+    container.style.minHeight = ''; // Reset after load
   };
   img.onerror = () => {
+    spinner.style.display = 'none';
     img.style.display = 'none';
     noScreenshot.style.display = 'block';
     noScreenshot.textContent = 'No screenshot available';
+    container.style.minHeight = ''; // Reset on error
   };
 }
 
