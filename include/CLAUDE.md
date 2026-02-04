@@ -22,6 +22,12 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #1093 | 7:13 PM | 🔵 | UI Manager Header Defines ButtonCard and SceneButton Array Sizes | ~384 |
+| #1082 | 7:11 PM | 🔵 | Config Manager Header Review for Implementation Planning | ~321 |
+| #1056 | 7:06 PM | 🔵 | Device Controller Handles Button State Changes and Server Communication | ~356 |
+| #1055 | 7:05 PM | 🔵 | Theme Engine Defines Neon Color Array for Per-Button Coloring | ~391 |
+| #1054 | " | 🔵 | MAX_BUTTONS Constant Currently Set to 6 | ~398 |
+| #1053 | " | 🔵 | UI Manager Architecture Defines MAX_BUTTONS Constant | ~392 |
 | #822 | 1:48 PM | 🔵 | BrightnessScheduler Header Defines Scheduler Interface Pattern | ~318 |
 | #814 | 1:46 PM | 🔵 | Configuration Manager Schema Includes Brightness and Day/Night Scheduling | ~396 |
 | #812 | 1:45 PM | 🔵 | ThemeEngine C++ Class Manages Four Built-in Themes | ~347 |

@@ -13,5 +13,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #1069 | 7:08 PM | 🔵 | Scene Routes Handle Global Scene Definitions and Execution | ~389 |
+| #1066 | 7:07 PM | 🔵 | Device Routes API Endpoint Structure | ~374 |
 | #811 | 1:45 PM | 🔵 | Server-Based Device Management Architecture Identified | ~381 |
 </claude-mem-context>

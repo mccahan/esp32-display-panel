@@ -26,7 +26,9 @@ ThemeDefinition ThemeEngine::lightModeTheme = {
         .neonColors = {
             lv_color_hex(0xff9500), lv_color_hex(0xff9500),
             lv_color_hex(0xff9500), lv_color_hex(0xff9500),
-            lv_color_hex(0xff9500), lv_color_hex(0xff9500)
+            lv_color_hex(0xff9500), lv_color_hex(0xff9500),
+            lv_color_hex(0xff9500), lv_color_hex(0xff9500),
+            lv_color_hex(0xff9500)
         }
     },
     .style = {
@@ -66,7 +68,10 @@ ThemeDefinition ThemeEngine::neonCyberpunkTheme = {
             lv_color_hex(0xffff00),  // Neon yellow - Kitchen
             lv_color_hex(0x00ff88),  // Neon green - Bathroom
             lv_color_hex(0xff6600),  // Neon orange
-            lv_color_hex(0xaa00ff)   // Neon purple
+            lv_color_hex(0xaa00ff),  // Neon purple
+            lv_color_hex(0x00ffff),  // Bright cyan
+            lv_color_hex(0xff00ff),  // Magenta
+            lv_color_hex(0x88ff00)   // Lime green
         }
     },
     .style = {
@@ -103,7 +108,9 @@ ThemeDefinition ThemeEngine::darkCleanTheme = {
         .neonColors = {
             lv_color_hex(0xff9f0a), lv_color_hex(0xff9f0a),
             lv_color_hex(0xff9f0a), lv_color_hex(0xff9f0a),
-            lv_color_hex(0xff9f0a), lv_color_hex(0xff9f0a)
+            lv_color_hex(0xff9f0a), lv_color_hex(0xff9f0a),
+            lv_color_hex(0xff9f0a), lv_color_hex(0xff9f0a),
+            lv_color_hex(0xff9f0a)
         }
     },
     .style = {
@@ -143,7 +150,10 @@ ThemeDefinition ThemeEngine::lcarsTheme = {
             lv_color_hex(0x664477),  // Purple (active cards)
             lv_color_hex(0x9977aa),  // Light purple (standby cards)
             lv_color_hex(0x6688cc),  // Blue (accents)
-            lv_color_hex(0xffcc66)   // Yellow (standby text)
+            lv_color_hex(0xffcc66),  // Yellow (standby text)
+            lv_color_hex(0x99ccff),  // Light blue
+            lv_color_hex(0xcc99ff),  // Light purple
+            lv_color_hex(0xffcc00)   // Gold
         }
     },
     .style = {
@@ -308,7 +318,7 @@ void ThemeEngine::styleCard(lv_obj_t* obj, bool isOn, int colorIndex) {
 
         if (theme.style.glowingBorders && isOn) {
             // Glowing border for neon theme
-            lv_color_t neonColor = theme.colors.neonColors[colorIndex % 6];
+            lv_color_t neonColor = theme.colors.neonColors[colorIndex % 9];
             lv_obj_set_style_border_color(obj, neonColor, 0);
         } else {
             lv_obj_set_style_border_color(obj, theme.colors.border, 0);
@@ -322,7 +332,7 @@ void ThemeEngine::styleCard(lv_obj_t* obj, bool isOn, int colorIndex) {
 
     if (theme.style.glowingBorders && isOn) {
         // Glow effect for neon theme
-        lv_color_t neonColor = theme.colors.neonColors[colorIndex % 6];
+        lv_color_t neonColor = theme.colors.neonColors[colorIndex % 9];
         lv_obj_set_style_shadow_color(obj, neonColor, 0);
         lv_obj_set_style_shadow_spread(obj, theme.style.shadowSpread, 0);
     } else {
@@ -415,7 +425,7 @@ lv_color_t ThemeEngine::getIconColor(bool isOn, int colorIndex) {
 
     if (isOn) {
         if (theme.id == ThemeId::NEON_CYBERPUNK) {
-            return theme.colors.neonColors[colorIndex % 6];
+            return theme.colors.neonColors[colorIndex % 9];
         }
         return theme.colors.onState;
     }

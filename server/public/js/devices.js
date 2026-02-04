@@ -160,8 +160,8 @@ function updateButtonSceneId(index, sceneId) {
 
 export function addButton() {
   if (!selectedDevice) return;
-  if (selectedDevice.config.buttons.length >= 6) {
-    showToast('Maximum 6 buttons allowed', 'error');
+  if (selectedDevice.config.buttons.length >= 9) {
+    showToast('Maximum 9 buttons allowed', 'error');
     return;
   }
 
@@ -1070,8 +1070,8 @@ export async function confirmCreateButton() {
     return;
   }
 
-  if (selectedDevice.config.buttons.length >= 6) {
-    showToast('Maximum 6 buttons allowed', 'error');
+  if (selectedDevice.config.buttons.length >= 9) {
+    showToast('Maximum 9 buttons allowed', 'error');
     return;
   }
 

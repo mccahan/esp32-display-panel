@@ -11,6 +11,22 @@
 #include "sun_icon.h"
 #include <WiFi.h>
 
+// Helper function to sanitize text for LVGL fonts
+// Replaces smart quotes and other problematic Unicode characters with ASCII equivalents
+static String sanitizeForDisplay(const String& input) {
+    String result = input;
+    // Replace various types of apostrophes/single quotes with ASCII apostrophe
+    result.replace("\xe2\x80\x99", "'");  // Right single quotation mark (')
+    result.replace("\xe2\x80\x98", "'");  // Left single quotation mark (')
+    result.replace("\xc2\xb4", "'");      // Acute accent (´)
+    result.replace("\xe2\x80\x9c", "\""); // Left double quotation mark (")
+    result.replace("\xe2\x80\x9d", "\""); // Right double quotation mark (")
+    result.replace("\xe2\x80\x93", "-");  // En dash (–)
+    result.replace("\xe2\x80\x94", "-");  // Em dash (—)
+    result.replace("\xe2\x80\xa6", "..."); // Ellipsis (…)
+    return result;
+}
+
 // Global instance
 UIManager uiManager;
 
@@ -309,6 +325,17 @@ void UIManager::calculateGridLayout(int numButtons, int& cols, int& rows,
             cardWidth = 140;
             cardHeight = 110;
             break;
+        case 7:
+        case 8:
+        case 9:
+            // 3x3 grid for 7-9 buttons
+            cols = 3;
+            rows = 3;
+            gap = 12;  // Tighter gap for 3x3 grid
+            cardWidth = 130;
+            // Card height: 78px with scenes, 110px without - more room for text
+            cardHeight = numScenes > 0 ? 78 : 110;
+            break;
         default:
             // Fallback for 1 button or invalid count
             cols = 1;
@@ -333,7 +360,8 @@ void UIManager::createButtonGrid() {
     // Calculate starting position to center the grid
     int totalWidth = cols * cardWidth + (cols - 1) * gap;
     int startX = (SCREEN_WIDTH - totalWidth) / 2;
-    int startY = 90;
+    // Cyberpunk with 7+ buttons needs to start higher to leave room for footer
+    int startY = (themeEngine.isCyberpunk() && numButtons >= 7) ? 75 : 90;
 
     Serial.printf("UIManager: Grid %dx%d, card %dx%d, gap %d, startX %d\n",
                   cols, rows, cardWidth, cardHeight, gap, startX);
@@ -447,11 +475,11 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
 
         // Uppercase room name, centered - use smaller font for long names
         card.nameLabel = lv_label_create(card.card);
-        String upperName = btnConfig.name;
+        String upperName = sanitizeForDisplay(btnConfig.name);
         upperName.toUpperCase();
         lv_label_set_text(card.nameLabel, upperName.c_str());
         // Choose font size based on name length
-        size_t nameLen = btnConfig.name.length();
+        size_t nameLen = upperName.length();
         if (nameLen > 16) {
             lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_12, 0);
         } else if (nameLen > 12) {
@@ -480,13 +508,21 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
         card.toggle = nullptr;
     } else {
         // Standard style with toggle switch (except for scene buttons)
+        // Compact mode for 7+ buttons - smaller toggles, adjusted spacing
+        bool compactMode = (numButtons >= 7);
+        int iconPadding = compactMode ? 10 : 18;
+        int toggleWidth = compactMode ? 44 : 50;
+        int toggleHeight = compactMode ? 22 : 26;
+        int togglePadding = compactMode ? 8 : 15;
+
         // Icon - use image for fans and custom icons, symbols for others
+        // Note: Image icons keep full size in compact mode (scaling causes rendering issues)
         if (btnConfig.type == ButtonType::FAN) {
             card.icon = lv_img_create(card.card);
             lv_img_set_src(card.icon, &fan_icon);
             lv_obj_set_style_img_recolor(card.icon, themeEngine.getIconColor(card.currentState, index), 0);
             lv_obj_set_style_img_recolor_opa(card.icon, LV_OPA_COVER, 0);
-            lv_obj_align(card.icon, LV_ALIGN_TOP_LEFT, 18, 18);
+            lv_obj_align(card.icon, LV_ALIGN_TOP_LEFT, iconPadding, iconPadding);
             card.iconIsImage = true;
         } else if (isImageIcon(btnConfig.icon)) {
             // Use custom image icon
@@ -494,16 +530,16 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
             lv_img_set_src(card.icon, getIconImage(btnConfig.icon));
             lv_obj_set_style_img_recolor(card.icon, themeEngine.getIconColor(card.currentState, index), 0);
             lv_obj_set_style_img_recolor_opa(card.icon, LV_OPA_COVER, 0);
-            lv_obj_align(card.icon, LV_ALIGN_TOP_LEFT, 18, 18);
+            lv_obj_align(card.icon, LV_ALIGN_TOP_LEFT, iconPadding, iconPadding);
             card.iconIsImage = true;
         } else {
-            // Use text symbol
+            // Use text symbol - slightly smaller in compact mode
             card.icon = lv_label_create(card.card);
             const char* iconSymbol = getIconSymbol(btnConfig.icon);
             lv_label_set_text(card.icon, iconSymbol);
-            lv_obj_set_style_text_font(card.icon, &lv_font_montserrat_28, 0);
+            lv_obj_set_style_text_font(card.icon, compactMode ? &lv_font_montserrat_24 : &lv_font_montserrat_28, 0);
             lv_obj_set_style_text_color(card.icon, themeEngine.getIconColor(card.currentState, index), 0);
-            lv_obj_align(card.icon, LV_ALIGN_TOP_LEFT, 18, 18);
+            lv_obj_align(card.icon, LV_ALIGN_TOP_LEFT, iconPadding, iconPadding);
             card.iconIsImage = false;
         }
 
@@ -513,8 +549,8 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
             // No toggle or label for scene buttons - they're just tappable
         } else {
             card.toggle = lv_switch_create(card.card);
-            lv_obj_set_size(card.toggle, 50, 26);
-            lv_obj_align(card.toggle, LV_ALIGN_TOP_RIGHT, -15, 18);
+            lv_obj_set_size(card.toggle, toggleWidth, toggleHeight);
+            lv_obj_align(card.toggle, LV_ALIGN_TOP_RIGHT, -togglePadding, iconPadding);
             themeEngine.styleSwitch(card.toggle);
 
             if (card.currentState) {
@@ -524,25 +560,43 @@ void UIManager::createButtonCard(int index, const ButtonConfig& btnConfig, int g
             lv_obj_add_event_cb(card.toggle, onToggleChanged, LV_EVENT_VALUE_CHANGED, (void*)(intptr_t)index);
         }
 
-        // Room name label - use smaller font for long names
+        // Room name label - in compact mode use larger fonts and allow wrapping
         card.nameLabel = lv_label_create(card.card);
-        lv_label_set_text(card.nameLabel, btnConfig.name.c_str());
-        // Choose font size based on name length
-        size_t nameLen = btnConfig.name.length();
-        if (nameLen > 16) {
-            lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_12, 0);
-        } else if (nameLen > 12) {
-            lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_14, 0);
+        String sanitizedName = sanitizeForDisplay(btnConfig.name);
+        lv_label_set_text(card.nameLabel, sanitizedName.c_str());
+        size_t nameLen = sanitizedName.length();
+        if (compactMode) {
+            // Compact mode: larger fonts than before, allow wrapping
+            if (nameLen > 18) {
+                lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_14, 0);
+            } else {
+                lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_16, 0);
+            }
+            lv_obj_set_width(card.nameLabel, cardWidth - 16);  // More width in compact mode
+            lv_label_set_long_mode(card.nameLabel, LV_LABEL_LONG_WRAP);  // Allow wrap
+            lv_obj_set_style_text_line_space(card.nameLabel, -1, 0);  // Slightly tighter line spacing
         } else {
-            lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_16, 0);
+            if (nameLen > 16) {
+                lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_12, 0);
+            } else if (nameLen > 12) {
+                lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_14, 0);
+            } else {
+                lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_16, 0);
+            }
+            lv_obj_set_width(card.nameLabel, cardWidth - 36);  // Limit width with padding
+            lv_label_set_long_mode(card.nameLabel, LV_LABEL_LONG_DOT);  // Add ... if still too long
         }
         themeEngine.styleLabel(card.nameLabel, true);
-        lv_obj_set_width(card.nameLabel, cardWidth - 36);  // Limit width with padding
-        lv_label_set_long_mode(card.nameLabel, LV_LABEL_LONG_DOT);  // Add ... if still too long
-        lv_obj_align(card.nameLabel, LV_ALIGN_BOTTOM_LEFT, 18, -18);
+        if (compactMode) {
+            // In compact mode, position text in the middle-lower area for better centering
+            // Card is 110px, icon area is ~45px, so start text around y=50
+            lv_obj_align(card.nameLabel, LV_ALIGN_TOP_LEFT, 10, 50);
+        } else {
+            lv_obj_align(card.nameLabel, LV_ALIGN_BOTTOM_LEFT, 18, -18);
+        }
 
-        // Status text (for themes that show it)
-        if (themeEngine.showsStatusText()) {
+        // Status text (for themes that show it) - hidden in compact mode to save space
+        if (themeEngine.showsStatusText() && !compactMode) {
             card.stateLabel = lv_label_create(card.card);
             if (btnConfig.type == ButtonType::SCENE) {
                 lv_label_set_text(card.stateLabel, "Tap to run");
@@ -899,11 +953,11 @@ void UIManager::createLCARSLayout() {
     lv_obj_set_style_radius(hline2, 0, 0);
     lv_obj_set_style_border_width(hline2, 0, 0);
 
-    // === BUTTON CARDS (2 columns, variable rows) ===
+    // === BUTTON CARDS (2 or 3 columns based on count) ===
     int cardStartX = 70;
     int cardStartY = 90;
     int cardGap = 8;
-    int cols = 2;  // Always 2 columns for readability
+    int cols = numButtons > 6 ? 3 : 2;  // 3 columns for 7+ buttons
     int rows = (numButtons + cols - 1) / cols;  // Calculate actual rows needed
 
     // Adjust card height based on available space (leave room for status section)
@@ -912,7 +966,7 @@ void UIManager::createLCARSLayout() {
     int cardHeight = (availableHeight - (rows - 1) * cardGap) / rows;
     if (cardHeight > 95) cardHeight = 95;  // Max height
     if (cardHeight < 50) cardHeight = 50;  // Min height
-    int cardWidth = 195;
+    int cardWidth = numButtons > 6 ? 128 : 195;  // Narrower cards for 3 columns
 
     for (int i = 0; i < numButtons && i < MAX_BUTTONS; i++) {
         int col = i % cols;
@@ -1464,7 +1518,7 @@ void UIManager::createLCARSCard(int index, const ButtonConfig& btnConfig, int x,
 
     // Room name - on right side
     card.nameLabel = lv_label_create(card.card);
-    String upperName = btnConfig.name;
+    String upperName = sanitizeForDisplay(btnConfig.name);
     upperName.toUpperCase();
     lv_label_set_text(card.nameLabel, upperName.c_str());
     lv_obj_set_style_text_color(card.nameLabel, card.currentState ? lv_color_white() : lcarsYellow, 0);

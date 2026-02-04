@@ -26,7 +26,7 @@ struct ThemeColors {
     lv_color_t shadow;
 
     // Neon theme specific colors (per-room)
-    lv_color_t neonColors[6];
+    lv_color_t neonColors[9];
 };
 
 // Theme style parameters

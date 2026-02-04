@@ -6,7 +6,7 @@
 #include <vector>
 
 // Maximum number of buttons and scenes
-#define MAX_BUTTONS 6
+#define MAX_BUTTONS 9
 #define MAX_SCENES 2
 #define MAX_SCHEDULE_PERIODS 6
 

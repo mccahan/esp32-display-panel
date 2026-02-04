@@ -13,6 +13,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #1084 | 7:11 PM | 🔵 | Web Admin Dashboard HTML Structure | ~397 |
 | #829 | 1:50 PM | 🔵 | Device Config Save Function Updates Server and Pushes to ESP32 | ~361 |
 | #827 | 1:49 PM | 🔵 | Settings Tab Structure Revealed - Single Panel Layout | ~348 |
 | #817 | 1:46 PM | 🔵 | Web-Based Settings UI Found in Server's HTML Interface | ~400 |
