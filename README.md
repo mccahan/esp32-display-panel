@@ -2,14 +2,26 @@
 
 A smart home control panel built on the Guition ESP32-S3-4848S040 with a Bun/TypeScript management server and plugin system for external integrations like Homebridge.
 
-### Dark Mode
-![Dark Mode Theme](screenshot-darkmode.png)
+## Screenshots
 
-### Cyberpunk Theme
-![Cyberpunk Theme](screenshot-cyberpunk.png)
-
-### LCARS Theme
-![LCARS Theme](screenshot-lcars.png)
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <b>Dark Mode</b><br/>
+        <img src="screenshot-darkmode.png" alt="Dark Mode Theme" width="300"/>
+      </td>
+      <td align="center">
+        <b>Cyberpunk Theme</b><br/>
+        <img src="screenshot-cyberpunk.png" alt="Cyberpunk Theme" width="300"/>
+      </td>
+      <td align="center">
+        <b>LCARS Theme</b><br/>
+        <img src="screenshot-lcars.png" alt="LCARS Theme" width="300"/>
+      </td>
+    </tr>
+  </table>
+</div>
 
 ## Features
 
