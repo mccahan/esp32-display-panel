@@ -659,6 +659,18 @@ String DisplayWebServer::getIndexPage() {
         </div>
 
         <div class="card">
+            <h2>Server Configuration</h2>
+            <div class="form-group">
+                <label>Reporting URL</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="reporting-url-input" placeholder="http://server:port">
+                    <button class="btn" onclick="saveReportingUrl()" style="margin: 0; white-space: nowrap;">Update</button>
+                </div>
+            </div>
+            <div id="reporting-url-status"></div>
+        </div>
+
+        <div class="card">
             <h2>Screenshot</h2>
             <div id="screenshot-status"></div>
             <button class="btn" onclick="captureScreenshot()">Capture Screenshot</button>
@@ -875,9 +887,54 @@ String DisplayWebServer::getIndexPage() {
             }
         }
 
+        async function loadReportingUrl() {
+            try {
+                const response = await fetch('/api/server');
+                const data = await response.json();
+                document.getElementById('reporting-url-input').value = data.reportingUrl || '';
+            } catch (e) {
+                console.error('Failed to load reporting URL:', e);
+            }
+        }
+
+        async function saveReportingUrl() {
+            const url = document.getElementById('reporting-url-input').value.trim();
+            const status = document.getElementById('reporting-url-status');
+
+            if (!url) {
+                status.innerHTML = '<span class="status status-error">URL is required</span>';
+                return;
+            }
+
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                status.innerHTML = '<span class="status status-error">URL must start with http:// or https://</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/server', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reportingUrl: url })
+                });
+                const data = await response.json();
+
+                if (response.status === 200) {
+                    status.innerHTML = '<span class="status status-success">' + data.message + '</span>';
+                } else if (response.status === 202) {
+                    status.innerHTML = '<span class="status" style="background: #5c4b00; color: #ffc107;">Confirm on device display</span>';
+                } else {
+                    status.innerHTML = '<span class="status status-error">' + (data.error || 'Failed') + '</span>';
+                }
+            } catch (e) {
+                status.innerHTML = '<span class="status status-error">Connection error</span>';
+            }
+        }
+
         // Load data on page load
         loadDeviceInfo();
         loadWifiStatus();
+        loadReportingUrl();
         setInterval(loadDeviceInfo, 5000);
         setInterval(loadWifiStatus, 10000);
 

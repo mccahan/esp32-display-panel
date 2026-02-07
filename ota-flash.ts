@@ -9,11 +9,13 @@
  *
  * Options:
  *   --all         Flash all discovered devices without prompting
+ *   --ip          Flash a specific device by IP address (skips mDNS discovery)
  *   --firmware    Path to firmware.bin (default: .pio/build/esp32s3/firmware.bin)
  *
  * Examples:
  *   bun ota-flash.ts              # Interactive device selection
  *   bun ota-flash.ts --all        # Flash all discovered devices
+ *   bun ota-flash.ts --ip 10.0.1.44  # Flash specific device by IP
  *   bun ota-flash.ts -f custom.bin --all
  */
 
@@ -34,20 +36,23 @@ const DEFAULT_FIRMWARE_PATH = '.pio/build/esp32s3/firmware.bin';
 const DISCOVERY_TIMEOUT_MS = 5000;
 
 // Parse command line arguments
-function parseArgs(): { flashAll: boolean; firmwarePath: string } {
+function parseArgs(): { flashAll: boolean; firmwarePath: string; ip: string | null } {
   const args = process.argv.slice(2);
   let flashAll = false;
   let firmwarePath = DEFAULT_FIRMWARE_PATH;
+  let ip: string | null = null;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--all' || args[i] === '-a') {
       flashAll = true;
     } else if (args[i] === '--firmware' || args[i] === '-f') {
       firmwarePath = args[++i];
+    } else if (args[i] === '--ip' || args[i] === '-i') {
+      ip = args[++i];
     }
   }
 
-  return { flashAll, firmwarePath };
+  return { flashAll, firmwarePath, ip };
 }
 
 // Calculate MD5 hash of file
@@ -231,7 +236,7 @@ async function flashDevice(device: DiscoveredDevice, firmwarePath: string, md5Ha
 
 // Main entry point
 async function main(): Promise<void> {
-  const { flashAll, firmwarePath } = parseArgs();
+  const { flashAll, firmwarePath, ip } = parseArgs();
 
   // Check firmware exists
   const absoluteFirmwarePath = path.isAbsolute(firmwarePath)
@@ -251,24 +256,30 @@ async function main(): Promise<void> {
   console.log(`   Size: ${(fileSize / 1024).toFixed(1)} KB`);
   console.log(`   MD5: ${md5Hash}\n`);
 
-  // Discover devices
-  const devices = await discoverDevices();
-
-  if (devices.length === 0) {
-    console.log('\n⚠️  No devices found. Make sure devices are powered on and connected to WiFi.');
-    process.exit(1);
-  }
-
-  console.log(`\n✅ Found ${devices.length} device(s)\n`);
-
-  // Select devices to flash
+  // Resolve target devices
   let selectedDevices: DiscoveredDevice[];
 
-  if (flashAll) {
-    selectedDevices = devices;
-    console.log(`Flashing all ${devices.length} device(s)...`);
+  if (ip) {
+    // Direct IP mode - skip discovery
+    selectedDevices = [{ id: ip, name: ip, ip, port: 80 }];
+    console.log(`🎯 Targeting device at ${ip}\n`);
   } else {
-    selectedDevices = await selectDevices(devices);
+    // mDNS discovery
+    const devices = await discoverDevices();
+
+    if (devices.length === 0) {
+      console.log('\n⚠️  No devices found. Make sure devices are powered on and connected to WiFi.');
+      process.exit(1);
+    }
+
+    console.log(`\n✅ Found ${devices.length} device(s)\n`);
+
+    if (flashAll) {
+      selectedDevices = devices;
+      console.log(`Flashing all ${devices.length} device(s)...`);
+    } else {
+      selectedDevices = await selectDevices(devices);
+    }
   }
 
   if (selectedDevices.length === 0) {
